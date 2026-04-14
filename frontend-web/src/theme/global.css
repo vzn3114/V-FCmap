@@ -1,0 +1,95 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply m-0 min-h-screen antialiased;
+    color: #1f2a24;
+    font-family: "Space Grotesk", "Inter", "Segoe UI", sans-serif;
+    background-image:
+      radial-gradient(1100px 620px at 7% -12%, rgba(86, 245, 90, 0.22), transparent 58%),
+      radial-gradient(900px 520px at 100% 6%, rgba(151, 82, 238, 0.2), transparent 55%),
+      linear-gradient(180deg, #f5f4ed 0%, #f1efe7 52%, #ebeadf 100%);
+  }
+
+  input,
+  select,
+  textarea {
+    @apply text-fc-text;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply rounded-2xl border bg-white/65 backdrop-blur-md;
+    border-color: rgba(148, 119, 179, 0.26);
+    box-shadow: 0 14px 36px rgba(36, 32, 70, 0.12);
+  }
+
+  .app-shell {
+    @apply mx-auto max-w-7xl px-4 pb-8 pt-24 sm:px-6;
+  }
+
+  .btn-primary {
+    @apply inline-flex h-11 min-w-28 items-center justify-center rounded-xl border px-4 font-bold transition;
+    border-color: #76ef71;
+    background: linear-gradient(135deg, #d7ffd0 0%, #bbffb8 100%);
+    color: #196d2b;
+    box-shadow: 0 0 16px rgba(90, 236, 95, 0.55);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary {
+    @apply inline-flex h-11 min-w-28 items-center justify-center rounded-xl border px-4 font-semibold transition;
+    border-color: rgba(124, 88, 171, 0.45);
+    background: rgba(255, 255, 255, 0.7);
+    color: #493c5f;
+  }
+
+  .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(124, 88, 171, 0.7);
+  }
+
+  .input-base {
+    @apply h-11 w-full rounded-xl border bg-white/90 px-3 text-sm outline-none ring-0;
+    border-color: rgba(130, 106, 160, 0.34);
+    color: #1d2b22;
+  }
+
+  .input-base::placeholder {
+    color: #76887d;
+  }
+
+  .input-base:focus {
+    border-color: rgba(93, 223, 103, 0.75);
+  }
+
+  .label-base {
+    @apply mb-2 block text-sm font-semibold;
+    color: #4f5d53;
+  }
+
+  .title-xl {
+    @apply text-2xl font-bold tracking-tight md:text-3xl;
+    color: #243127;
+    font-family: "Sora", "Space Grotesk", sans-serif;
+  }
+
+  .title-lg {
+    @apply text-xl font-semibold;
+    color: #273229;
+    font-family: "Sora", "Space Grotesk", sans-serif;
+  }
+
+  .muted {
+    @apply text-sm;
+    color: #5f6f65;
+  }
+}
