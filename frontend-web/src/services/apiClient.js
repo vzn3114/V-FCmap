@@ -27,7 +27,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     const backendMessage = error?.response?.data?.message;
-    const fallback = error?.message || "Da co loi xay ra";
+    const fallback = error?.message || "Đã có lỗi xảy ra";
 
     toast.error(backendMessage || fallback);
 

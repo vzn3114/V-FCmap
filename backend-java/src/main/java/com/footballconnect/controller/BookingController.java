@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -67,9 +68,13 @@ public class BookingController {
                 email,
                 bookingRequest.getVenueId(),
                 bookingRequest.getFieldName(),
+                bookingRequest.getFieldType(),
                 bookingRequest.getTeamId(),
                 bookingRequest.getStartTime(),
-                bookingRequest.getEndTime()
+                bookingRequest.getEndTime(),
+                bookingRequest.getQrCode(),
+                bookingRequest.getNotes(),
+                bookingRequest.getBillSplits()
         );
         return ResponseEntity.ok(savedBooking);
     }
@@ -97,6 +102,17 @@ public class BookingController {
     }
 
     /**
+     * Cancel booking
+     * PUT /api/bookings/{id}/cancel
+     */
+    @PutMapping("/{id}/cancel")
+    public ResponseEntity<?> cancelBooking(@PathVariable Long id, @RequestBody CancelBookingRequest request) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Booking booking = bookingService.cancelBooking(id, email, request.getCancellationReason());
+        return ResponseEntity.ok(booking);
+    }
+
+    /**
      * DTOs
      */
     @lombok.Data
@@ -109,6 +125,9 @@ public class BookingController {
         @NotBlank(message = "fieldName is required")
         private String fieldName;
 
+        @NotBlank(message = "fieldType is required")
+        private String fieldType;
+
         private Long teamId;
 
         @NotBlank(message = "startTime is required")
@@ -116,6 +135,12 @@ public class BookingController {
 
         @NotBlank(message = "endTime is required")
         private String endTime;
+
+        private String qrCode;
+
+        private String notes;
+
+        private List<Booking.BillSplit> billSplits;
     }
 
     @lombok.Data
@@ -140,5 +165,12 @@ public class BookingController {
     public static class PaymentResponse {
         private String message;
         private Long bookingId;
+    }
+
+    @lombok.Data
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class CancelBookingRequest {
+        private String cancellationReason;
     }
 }

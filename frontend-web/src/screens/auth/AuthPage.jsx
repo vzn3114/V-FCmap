@@ -34,7 +34,7 @@ export default function AuthPage() {
     }
   }, [token, navigate]);
 
-  const title = useMemo(() => (mode === "login" ? "Dang nhap" : "Tao tai khoan"), [mode]);
+  const title = useMemo(() => (mode === "login" ? "Đăng nhập" : "Tạo tài khoản"), [mode]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -67,21 +67,21 @@ export default function AuthPage() {
     <div className="mx-auto mt-8 max-w-xl">
       <motion.div className="glass-panel p-6 sm:p-8" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="title-xl text-center">{title}</h1>
-        <p className="muted mt-2 text-center">Truy cap he thong dat san theo giao dien thong nhat voi trang chu.</p>
+        <p className="muted mt-2 text-center">Truy cập hệ thống đặt sân theo giao diện thống nhất với trang chủ.</p>
 
         <div className="mt-6 grid grid-cols-2 gap-2 rounded-xl border border-fc-line bg-slate-900/60 p-1">
           <button className={mode === "login" ? "btn-primary w-full" : "btn-secondary w-full"} type="button" onClick={() => setMode("login")}>
-            Dang nhap
+            Đăng nhập
           </button>
           <button className={mode === "register" ? "btn-primary w-full" : "btn-secondary w-full"} type="button" onClick={() => setMode("register")}>
-            Dang ky
+            Đăng ký
           </button>
         </div>
 
         <form className="mt-6 space-y-4" onSubmit={onSubmit}>
           {mode === "register" && (
             <div>
-              <label className="label-base">Ho ten</label>
+              <label className="label-base">Họ tên</label>
               <input className="input-base" value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} />
             </div>
           )}
@@ -98,13 +98,13 @@ export default function AuthPage() {
 
           {mode === "register" && (
             <div>
-              <label className="label-base">So dien thoai</label>
+              <label className="label-base">Số điện thoại</label>
               <input className="input-base" value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))} />
             </div>
           )}
 
           <div>
-            <label className="label-base">Mat khau</label>
+            <label className="label-base">Mật khẩu</label>
             <input
               className="input-base"
               type="password"
@@ -114,7 +114,7 @@ export default function AuthPage() {
           </div>
 
           <button className="btn-primary w-full" disabled={loading} type="submit">
-            {loading ? "Dang xu ly..." : mode === "login" ? "Dang nhap" : "Tao tai khoan"}
+            {loading ? "Đang xử lý..." : mode === "login" ? "Đăng nhập" : "Tạo tài khoản"}
           </button>
         </form>
       </motion.div>

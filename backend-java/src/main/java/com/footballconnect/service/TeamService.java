@@ -1,5 +1,6 @@
 package com.footballconnect.service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -43,7 +44,16 @@ public class TeamService {
     /**
      * Create new team
      */
-    public Team createTeam(String email, String name, String logo) {
+    public Team createTeam(String email,
+                           String name,
+                           String logo,
+                           String teamDescription,
+                           String activeRegionDistrict,
+                           String activeRegionCity,
+                           List<String> preferredPlayTime,
+                           List<Team.Achievement> achievements,
+                           Boolean lookingForMatch,
+                           Integer fairPlayScore) {
         User captain = findUserByEmail(email);
 
         if (teamRepository.existsByName(name)) {
@@ -56,6 +66,12 @@ public class TeamService {
                 .captain(captain)
                 .tier(Team.Tier.BRONZE)
                 .rankingPoints(0)
+            .teamDescription(teamDescription)
+            .activeRegion(new Team.ActiveRegion(activeRegionDistrict, activeRegionCity))
+            .preferredPlayTime(preferredPlayTime != null ? preferredPlayTime : new ArrayList<>())
+            .achievements(achievements)
+            .lookingForMatch(lookingForMatch != null && lookingForMatch)
+            .fairPlayScore(fairPlayScore != null ? fairPlayScore : 100)
                 .build();
 
         return teamRepository.save(team);
@@ -64,7 +80,19 @@ public class TeamService {
     /**
      * Update team
      */
-    public Team updateTeam(Long teamId, String newName, String newLogo) {
+    public Team updateTeam(Long teamId,
+                           String newName,
+                           String newLogo,
+                           String teamDescription,
+                           String activeRegionDistrict,
+                           String activeRegionCity,
+                           List<String> preferredPlayTime,
+                           List<Team.Achievement> achievements,
+                           Boolean lookingForMatch,
+                           Integer fairPlayScore,
+                           Boolean isVerified,
+                           Boolean isBanned,
+                           String banReason) {
         Team team = getTeamById(teamId);
 
         if (newName != null && !newName.isBlank()) {
@@ -76,6 +104,51 @@ public class TeamService {
 
         if (newLogo != null && !newLogo.isBlank()) {
             team.setLogo(newLogo);
+        }
+
+        if (teamDescription != null) {
+            team.setTeamDescription(teamDescription);
+        }
+
+        if (activeRegionDistrict != null || activeRegionCity != null) {
+            Team.ActiveRegion activeRegion = team.getActiveRegion() != null
+                    ? team.getActiveRegion()
+                    : new Team.ActiveRegion();
+            if (activeRegionDistrict != null) {
+                activeRegion.setDistrict(activeRegionDistrict);
+            }
+            if (activeRegionCity != null) {
+                activeRegion.setCity(activeRegionCity);
+            }
+            team.setActiveRegion(activeRegion);
+        }
+
+        if (preferredPlayTime != null) {
+            team.setPreferredPlayTime(preferredPlayTime);
+        }
+
+        if (achievements != null) {
+            team.setAchievements(achievements);
+        }
+
+        if (lookingForMatch != null) {
+            team.setLookingForMatch(lookingForMatch);
+        }
+
+        if (fairPlayScore != null) {
+            team.setFairPlayScore(fairPlayScore);
+        }
+
+        if (isVerified != null) {
+            team.setIsVerified(isVerified);
+        }
+
+        if (isBanned != null) {
+            team.setIsBanned(isBanned);
+        }
+
+        if (banReason != null) {
+            team.setBanReason(banReason);
         }
 
         return teamRepository.save(team);

@@ -22,6 +22,10 @@ export const processPayment = createAsyncThunk("bookings/processPayment", async 
   return bookingService.processPayment(bookingId, payload);
 });
 
+export const cancelBooking = createAsyncThunk("bookings/cancelBooking", async ({ bookingId, payload }) => {
+  return bookingService.cancelBooking(bookingId, payload);
+});
+
 const bookingSlice = createSlice({
   name: "bookings",
   initialState,
@@ -64,6 +68,9 @@ const bookingSlice = createSlice({
       })
       .addCase(processPayment.rejected, (state) => {
         state.paymentLoading = false;
+      })
+      .addCase(cancelBooking.fulfilled, (state, action) => {
+        state.items = state.items.map((item) => (item.id === action.payload.id ? action.payload : item));
       });
   },
 });

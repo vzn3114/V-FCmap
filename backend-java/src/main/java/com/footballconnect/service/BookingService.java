@@ -64,9 +64,13 @@ public class BookingService {
     public Booking createBooking(String email,
                                  Long venueId,
                                  String fieldName,
+                                 String fieldTypeText,
                                  Long teamId,
                                  String startTimeText,
-                                 String endTimeText) {
+                                 String endTimeText,
+                                 String qrCode,
+                                 String notes,
+                                 List<Booking.BillSplit> billSplits) {
         LocalDateTime startTime = parseDateTime(startTimeText, "Invalid startTime format");
         LocalDateTime endTime = parseDateTime(endTimeText, "Invalid endTime format");
         if (!endTime.isAfter(startTime)) {
@@ -76,6 +80,13 @@ public class BookingService {
         User user = findUserByEmail(email);
         Venue venue = venueRepository.findById(venueId)
                 .orElseThrow(() -> new ResourceNotFoundException("Venue not found"));
+        Venue.FieldType fieldType = parseFieldType(fieldTypeText);
+
+        boolean hasFieldType = venue.getFields() != null
+            && venue.getFields().stream().anyMatch(field -> fieldType.equals(field.getType()));
+        if (!hasFieldType) {
+            throw new BadRequestException("Selected field type is not available for this venue");
+        }
 
         Team team = null;
         if (teamId != null) {
@@ -97,6 +108,7 @@ public class BookingService {
         Booking booking = Booking.builder()
                 .venue(venue)
                 .fieldName(fieldName)
+                .fieldType(fieldType)
                 .bookedBy(user)
                 .team(team)
                 .startTime(startTime)
@@ -104,6 +116,9 @@ public class BookingService {
                 .status(Booking.BookingStatus.PENDING)
                 .paymentStatus(Booking.PaymentStatus.PENDING)
                 .isCheckedIn(false)
+                .qrCode(qrCode)
+                .notes(notes)
+                .billSplits(billSplits != null ? billSplits : List.of())
                 .build();
 
         return bookingRepository.save(booking);
@@ -156,7 +171,7 @@ public class BookingService {
             var paymentProcessor = paymentProcessorFactory.getProcessor(
                     booking.getPaymentIntentId().split("-")[0].equals("COD") ? "COD" : "BANK_TRANSFER"
             );
-            String refundId = paymentProcessor.refundPayment(booking.getPaymentIntentId(), booking.getTotalPrice());
+            paymentProcessor.refundPayment(booking.getPaymentIntentId(), booking.getTotalPrice());
             booking.setPaymentStatus(Booking.PaymentStatus.REFUNDED);
         }
 
@@ -173,6 +188,14 @@ public class BookingService {
             return LocalDateTime.parse(dateTime);
         } catch (DateTimeParseException ex) {
             throw new BadRequestException(message);
+        }
+    }
+
+    private Venue.FieldType parseFieldType(String fieldTypeText) {
+        try {
+            return Venue.FieldType.valueOf(fieldTypeText);
+        } catch (Exception ex) {
+            throw new BadRequestException("Invalid fieldType. Use FIVE_A_SIDE, SEVEN_A_SIDE, or ELEVEN_A_SIDE");
         }
     }
 }

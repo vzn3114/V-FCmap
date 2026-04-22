@@ -1,12 +1,15 @@
 package com.footballconnect.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -84,7 +87,51 @@ public class VenueController {
      */
     @PostMapping("/owner")
     public ResponseEntity<?> createVenue(@Valid @RequestBody VenueRequest venueRequest) {
-        Venue venue = venueService.createVenue(venueRequest.getName(), venueRequest.getDescription());
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Venue venue = venueService.createVenue(
+            email,
+                venueRequest.getName(),
+                venueRequest.getDescription(),
+                venueRequest.getLocation(),
+                venueRequest.getPricing(),
+                venueRequest.getAmenities(),
+                venueRequest.getFields(),
+                venueRequest.getImages(),
+                venueRequest.getVideos(),
+                venueRequest.getOperatingHours(),
+                venueRequest.getPopularTimes(),
+                venueRequest.getQrCodeUrl(),
+                venueRequest.getTotalBookings(),
+                venueRequest.getIsVerified()
+        );
+        return ResponseEntity.ok(venue);
+    }
+
+    /**
+     * Update venue
+     * PUT /api/venues/{id}
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateVenue(@PathVariable Long id, @Valid @RequestBody VenueRequest venueRequest) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Venue venue = venueService.updateVenue(
+                id,
+            email,
+                venueRequest.getName(),
+                venueRequest.getDescription(),
+                venueRequest.getLocation(),
+                venueRequest.getPricing(),
+                venueRequest.getAmenities(),
+                venueRequest.getFields(),
+                venueRequest.getImages(),
+                venueRequest.getVideos(),
+                venueRequest.getOperatingHours(),
+                venueRequest.getPopularTimes(),
+                venueRequest.getQrCodeUrl(),
+                venueRequest.getTotalBookings(),
+                venueRequest.getIsVerified(),
+                venueRequest.getStatus()
+        );
         return ResponseEntity.ok(venue);
     }
 
@@ -99,5 +146,29 @@ public class VenueController {
         private String name;
 
         private String description;
+
+        private Venue.Location location;
+
+        private Venue.Pricing pricing;
+
+        private Venue.Amenities amenities;
+
+        private List<Venue.Field> fields;
+
+        private List<Venue.MediaItem> images;
+
+        private List<Venue.MediaItem> videos;
+
+        private Map<String, Venue.OperatingHours> operatingHours;
+
+        private List<String> popularTimes;
+
+        private String qrCodeUrl;
+
+        private Integer totalBookings;
+
+        private Boolean isVerified;
+
+        private String status;
     }
 }

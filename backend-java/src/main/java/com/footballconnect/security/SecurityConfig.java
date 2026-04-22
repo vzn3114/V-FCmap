@@ -61,7 +61,7 @@ public class SecurityConfig {
                 
                 // Public read-only endpoints
                 .requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/teams/public/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/teams/**").permitAll()
                 
                 // Admin only
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")

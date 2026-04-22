@@ -67,7 +67,18 @@ public class TeamController {
     @PostMapping
     public ResponseEntity<?> createTeam(@Valid @RequestBody TeamRequest teamRequest) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        Team team = teamService.createTeam(email, teamRequest.getName(), teamRequest.getLogo());
+        Team team = teamService.createTeam(
+                email,
+                teamRequest.getName(),
+                teamRequest.getLogo(),
+                teamRequest.getTeamDescription(),
+                teamRequest.getActiveRegionDistrict(),
+                teamRequest.getActiveRegionCity(),
+                teamRequest.getPreferredPlayTime(),
+                teamRequest.getAchievements(),
+                teamRequest.getLookingForMatch(),
+                teamRequest.getFairPlayScore()
+        );
         return ResponseEntity.ok(team);
     }
 
@@ -77,7 +88,21 @@ public class TeamController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<?> updateTeam(@PathVariable Long id, @Valid @RequestBody TeamRequest teamRequest) {
-        Team team = teamService.updateTeam(id, teamRequest.getName(), teamRequest.getLogo());
+        Team team = teamService.updateTeam(
+                id,
+                teamRequest.getName(),
+                teamRequest.getLogo(),
+                teamRequest.getTeamDescription(),
+                teamRequest.getActiveRegionDistrict(),
+                teamRequest.getActiveRegionCity(),
+                teamRequest.getPreferredPlayTime(),
+                teamRequest.getAchievements(),
+                teamRequest.getLookingForMatch(),
+                teamRequest.getFairPlayScore(),
+                teamRequest.getIsVerified(),
+                teamRequest.getIsBanned(),
+                teamRequest.getBanReason()
+        );
         return ResponseEntity.ok(team);
     }
 
@@ -117,5 +142,25 @@ public class TeamController {
         private String name;
 
         private String logo;
+
+        private String teamDescription;
+
+        private String activeRegionDistrict;
+
+        private String activeRegionCity;
+
+        private List<String> preferredPlayTime;
+
+        private List<Team.Achievement> achievements;
+
+        private Boolean lookingForMatch;
+
+        private Integer fairPlayScore;
+
+        private Boolean isVerified;
+
+        private Boolean isBanned;
+
+        private String banReason;
     }
 }

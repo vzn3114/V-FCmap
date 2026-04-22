@@ -207,6 +207,7 @@ CREATE TABLE bookings (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     venue_id BIGINT,
     field_name VARCHAR(255),
+    field_type VARCHAR(50),
     booked_by_id BIGINT,
     team_id BIGINT,
     

@@ -9,15 +9,12 @@ import VenuesPage from "../screens/venues/VenuesPage";
 import BookingsPage from "../screens/bookings/BookingsPage";
 import ProfilePage from "../screens/profile/ProfilePage";
 import TeamsPage from "../screens/teams/TeamsPage";
+import MatchesPage from "../screens/matches/MatchesPage";
+import ReviewsPage from "../screens/reviews/ReviewsPage";
+import ReportsPage from "../screens/reports/ReportsPage";
 import { fetchCurrentUser, logout } from "../redux/slices/authSlice";
-
-function PrivateRoute({ children }) {
-  const token = useSelector((state) => state.auth.token);
-  if (!token) {
-    return <Navigate to="/auth" replace />;
-  }
-  return children;
-}
+import AccessRoute from "./AccessRoute";
+import { ROLES, getNavigationItems, getRoleLabel } from "./roleAccess";
 
 function HomeRoute() {
   const token = useSelector((state) => state.auth.token);
@@ -54,22 +51,35 @@ function AppShell({ children }) {
   const location = useLocation();
   const dispatch = useDispatch();
   const { token, user } = useSelector((state) => state.auth);
+  const navItems = getNavigationItems(user?.role);
+  const roleLabel = getRoleLabel(user?.role);
 
   useEffect(() => {
-    if (token && !user) {
-      dispatch(fetchCurrentUser());
+    if (!token) {
+      return undefined;
     }
-  }, [dispatch, token, user]);
 
-  const selectedKey = location.pathname.startsWith("/bookings")
-    ? "bookings"
-    : location.pathname.startsWith("/teams")
-      ? "teams"
-      : location.pathname.startsWith("/profile")
-        ? "profile"
-      : location.pathname.startsWith("/venues")
-        ? "venues"
-        : "home";
+    let cancelled = false;
+
+    dispatch(fetchCurrentUser()).then((result) => {
+      if (cancelled) {
+        return;
+      }
+
+      if (fetchCurrentUser.rejected.match(result)) {
+        dispatch(logout());
+        navigate("/auth", { replace: true });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dispatch, navigate, token]);
+
+  const selectedKey = location.pathname === "/"
+    ? "home"
+    : navItems.find((item) => item.path !== "/" && location.pathname.startsWith(item.path))?.key || "home";
 
   return (
     <div className="min-h-screen">
@@ -77,22 +87,25 @@ function AppShell({ children }) {
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 rounded-2xl border border-[#cebfe7] bg-white/75 p-2 shadow-[0_12px_30px_rgba(34,31,66,0.14)] backdrop-blur-xl">
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-full bg-gradient-to-r from-[#42ea5b] to-[#8a43df] shadow-[0_0_12px_rgba(87,244,96,0.6)]" />
-            <p className="text-sm font-extrabold tracking-wide text-[#213027] sm:text-base">Football Connect</p>
+            <p className="text-sm font-extrabold tracking-wide text-[#213027] sm:text-base">Kết Nối Bóng Đá</p>
           </div>
 
           {token && (
             <div className="hidden items-center gap-2 md:flex">
-              <NavButton active={selectedKey === "home"} onClick={() => navigate("/")}>Trang chu</NavButton>
-              <NavButton active={selectedKey === "venues"} onClick={() => navigate("/venues")}>San bong</NavButton>
-              <NavButton active={selectedKey === "bookings"} onClick={() => navigate("/bookings")}>Dat san</NavButton>
-              <NavButton active={selectedKey === "teams"} onClick={() => navigate("/teams")}>Doi bong</NavButton>
-              <NavButton active={selectedKey === "profile"} onClick={() => navigate("/profile")}>Tai khoan</NavButton>
+              {navItems.map((item) => (
+                <NavButton active={selectedKey === item.key} key={item.key} onClick={() => navigate(item.path)}>
+                  {item.label}
+                </NavButton>
+              ))}
             </div>
           )}
 
           {token ? (
             <div className="flex items-center gap-2">
-              <p className="hidden text-sm text-[#54645a] sm:block">{user?.name || user?.email}</p>
+              <div className="hidden text-right leading-tight sm:block">
+                <p className="text-sm text-[#54645a]">{user?.name || user?.email}</p>
+                <p className="text-xs font-semibold text-[#7a4ea0]">{roleLabel}</p>
+              </div>
               <button
                 className="btn-secondary"
                 onClick={() => {
@@ -134,10 +147,13 @@ export default function AppRouter() {
     <Routes>
       <Route path="/" element={<HomeRoute />} />
       <Route path="/auth" element={<AppShell><AuthPage /></AppShell>} />
-      <Route path="/venues" element={<PrivateRoute><AppShell><VenuesPage /></AppShell></PrivateRoute>} />
-      <Route path="/bookings" element={<PrivateRoute><AppShell><BookingsPage /></AppShell></PrivateRoute>} />
-      <Route path="/teams" element={<PrivateRoute><AppShell><TeamsPage /></AppShell></PrivateRoute>} />
-      <Route path="/profile" element={<PrivateRoute><AppShell><ProfilePage /></AppShell></PrivateRoute>} />
+      <Route path="/venues" element={<AccessRoute><AppShell><VenuesPage /></AppShell></AccessRoute>} />
+      <Route path="/bookings" element={<AccessRoute><AppShell><BookingsPage /></AppShell></AccessRoute>} />
+      <Route path="/teams" element={<AccessRoute><AppShell><TeamsPage /></AppShell></AccessRoute>} />
+      <Route path="/matches" element={<AccessRoute allowedRoles={[ROLES.ADMIN]} redirectTo="/"><AppShell><MatchesPage /></AppShell></AccessRoute>} />
+      <Route path="/reviews" element={<AccessRoute><AppShell><ReviewsPage /></AppShell></AccessRoute>} />
+      <Route path="/reports" element={<AccessRoute><AppShell><ReportsPage /></AppShell></AccessRoute>} />
+      <Route path="/profile" element={<AccessRoute><AppShell><ProfilePage /></AppShell></AccessRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

@@ -1,6 +1,7 @@
 package com.footballconnect.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Service;
 import com.footballconnect.domain.entity.Matchmaking;
 import com.footballconnect.domain.entity.Team;
 import com.footballconnect.domain.entity.User;
+import com.footballconnect.domain.entity.Venue;
 import com.footballconnect.domain.repository.MatchmakingRepository;
 import com.footballconnect.domain.repository.TeamRepository;
 import com.footballconnect.domain.repository.UserRepository;
@@ -32,7 +34,12 @@ public class MatchmakingService {
     /**
      * Find opponents based on search criteria
      */
-    public List<Team> findOpponents(String email, String tier, Integer minRankingPoints, Integer maxRankingPoints) {
+        public List<Team> findOpponents(String email,
+                        String tier,
+                        Integer minRankingPoints,
+                        Integer maxRankingPoints,
+                        String preferredDistrict,
+                        String preferredCity) {
         User user = findUserByEmail(email);
         
         return teamRepository.findAll().stream()
@@ -40,6 +47,10 @@ public class MatchmakingService {
                 .filter(t -> tier == null || tier.isEmpty() || t.getTier().toString().equalsIgnoreCase(tier))
                 .filter(t -> minRankingPoints == null || t.getRankingPoints() >= minRankingPoints)
                 .filter(t -> maxRankingPoints == null || t.getRankingPoints() <= maxRankingPoints)
+            .filter(t -> preferredDistrict == null || preferredDistrict.isBlank()
+                || (t.getActiveRegion() != null && preferredDistrict.equalsIgnoreCase(t.getActiveRegion().getDistrict())))
+            .filter(t -> preferredCity == null || preferredCity.isBlank()
+                || (t.getActiveRegion() != null && preferredCity.equalsIgnoreCase(t.getActiveRegion().getCity())))
                 .toList();
     }
 
@@ -59,19 +70,41 @@ public class MatchmakingService {
     /**
      * Create a matchmaking request (challenge)
      */
-    public Matchmaking sendChallenge(String email, Long opponentTeamId) {
+    public Matchmaking sendChallenge(String email,
+                                     Long teamId,
+                                     Long opponentTeamId,
+                                     String preferredDistrict,
+                                     String preferredCity,
+                                     List<String> preferredPlayTimes,
+                                     String preferredFieldTypeText,
+                                     Integer minRankingPoints,
+                                     Integer maxRankingPoints,
+                                     Double maxDistance,
+                                     String preferredDateText) {
         User user = findUserByEmail(email);
+        Team team = findTeamById(teamId);
         Team opponentTeam = findTeamById(opponentTeamId);
 
-        if (opponentTeam.getCaptain().getId().equals(user.getId())) {
+        if (!team.getCaptain().getId().equals(user.getId())) {
+            throw new BadRequestException("Only team captain can send challenge");
+        }
+
+        if (opponentTeam.getCaptain().getId().equals(user.getId()) || opponentTeam.getId().equals(team.getId())) {
             throw new BadRequestException("Cannot send challenge to your own team");
         }
 
         Matchmaking matchmaking = Matchmaking.builder()
-                .team(null) // Will be set when user's team is specific
+                .team(team)
                 .matchedTeam(opponentTeam)
                 .status(Matchmaking.MatchmakingStatus.ACTIVE)
-                .preferredDate(LocalDateTime.now().plusDays(7))
+                .preferredDistrict(preferredDistrict)
+                .preferredCity(preferredCity)
+                .preferredPlayTimes(preferredPlayTimes != null ? preferredPlayTimes : new ArrayList<>())
+                .preferredFieldType(parseFieldType(preferredFieldTypeText))
+                .minRankingPoints(minRankingPoints)
+                .maxRankingPoints(maxRankingPoints)
+                .maxDistance(maxDistance)
+                .preferredDate(parseDateTimeOrDefault(preferredDateText, LocalDateTime.now().plusDays(7)))
                 .createdAt(LocalDateTime.now())
                 .expiresAt(LocalDateTime.now().plusDays(3))
                 .build();
@@ -120,7 +153,6 @@ public class MatchmakingService {
      * Get matched games
      */
     public List<Matchmaking> getMatchedGames(Long teamId) {
-        Team team = findTeamById(teamId);
         return matchmakingRepository.findAll().stream()
                 .filter(m -> m.getStatus().equals(Matchmaking.MatchmakingStatus.MATCHED))
                 .filter(m -> m.getTeam() != null && m.getTeam().getId().equals(teamId) 
@@ -155,5 +187,27 @@ public class MatchmakingService {
     private Matchmaking findMatchmakingById(Long matchmakingId) {
         return matchmakingRepository.findById(matchmakingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Matchmaking not found"));
+    }
+
+    private Venue.FieldType parseFieldType(String fieldTypeText) {
+        if (fieldTypeText == null || fieldTypeText.isBlank()) {
+            return null;
+        }
+        try {
+            return Venue.FieldType.valueOf(fieldTypeText.toUpperCase());
+        } catch (Exception ex) {
+            throw new BadRequestException("Invalid preferredFieldType");
+        }
+    }
+
+    private LocalDateTime parseDateTimeOrDefault(String value, LocalDateTime fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        try {
+            return LocalDateTime.parse(value);
+        } catch (Exception ex) {
+            throw new BadRequestException("Invalid preferredDate format");
+        }
     }
 }

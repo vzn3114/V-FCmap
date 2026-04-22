@@ -45,6 +45,9 @@ public class Booking {
 
     private String fieldName;
 
+    @Enumerated(EnumType.STRING)
+    private Venue.FieldType fieldType;
+
     @ManyToOne
     @JoinColumn(name = "booked_by_id")
     private User bookedBy;

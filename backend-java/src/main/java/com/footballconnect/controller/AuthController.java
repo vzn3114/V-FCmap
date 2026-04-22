@@ -9,6 +9,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -75,7 +76,17 @@ public class AuthController {
             user.getEmail(),
             jwt,
             user.getRole().toString(),
-            user.getAvatar()
+            user.getAvatar(),
+            user.getPhone(),
+            user.getLocation(),
+            user.getPreferredPosition() != null ? user.getPreferredPosition().toString() : null,
+            user.getSkillLevel() != null ? user.getSkillLevel().toString() : null,
+            user.getIsVerified(),
+            user.getIsBanned(),
+            user.getBanReason(),
+            user.getFairPlayScore(),
+            user.getTotalReviews(),
+            user.getAverageRating()
         ));
     }
 
@@ -108,7 +119,17 @@ public class AuthController {
                 user.getEmail(),
                 jwt,
                 user.getRole().toString(),
-                user.getAvatar()
+            user.getAvatar(),
+            user.getPhone(),
+            user.getLocation(),
+            user.getPreferredPosition() != null ? user.getPreferredPosition().toString() : null,
+            user.getSkillLevel() != null ? user.getSkillLevel().toString() : null,
+            user.getIsVerified(),
+            user.getIsBanned(),
+            user.getBanReason(),
+            user.getFairPlayScore(),
+            user.getTotalReviews(),
+            user.getAverageRating()
         ));
     }
 
@@ -133,7 +154,73 @@ public class AuthController {
                 user.getEmail(),
                 null,
                 user.getRole().toString(),
-                user.getAvatar()
+                user.getAvatar(),
+                user.getPhone(),
+                user.getLocation(),
+                user.getPreferredPosition() != null ? user.getPreferredPosition().toString() : null,
+                user.getSkillLevel() != null ? user.getSkillLevel().toString() : null,
+                user.getIsVerified(),
+                user.getIsBanned(),
+                user.getBanReason(),
+                user.getFairPlayScore(),
+                user.getTotalReviews(),
+                user.getAverageRating()
+        ));
+    }
+
+    /**
+     * Update current user profile
+     * PUT /api/auth/me
+     */
+    @PutMapping("/me")
+    public ResponseEntity<?> updateCurrentUser(@Valid @RequestBody UpdateProfileRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new com.footballconnect.exception.UnauthorizedException("Unauthorized");
+        }
+
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (request.getName() != null && !request.getName().isBlank()) {
+            user.setName(request.getName());
+        }
+        if (request.getPhone() != null) {
+            user.setPhone(request.getPhone());
+        }
+        if (request.getAvatar() != null) {
+            user.setAvatar(request.getAvatar());
+        }
+        if (request.getLocation() != null) {
+            user.setLocation(request.getLocation());
+        }
+        if (request.getPreferredPosition() != null && !request.getPreferredPosition().isBlank()) {
+            user.setPreferredPosition(User.Position.valueOf(request.getPreferredPosition().toUpperCase()));
+        }
+        if (request.getSkillLevel() != null && !request.getSkillLevel().isBlank()) {
+            user.setSkillLevel(User.SkillLevel.valueOf(request.getSkillLevel().toUpperCase()));
+        }
+
+        userRepository.save(user);
+
+        return ResponseEntity.ok(new AuthResponse(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                null,
+                user.getRole().toString(),
+                user.getAvatar(),
+                user.getPhone(),
+                user.getLocation(),
+                user.getPreferredPosition() != null ? user.getPreferredPosition().toString() : null,
+                user.getSkillLevel() != null ? user.getSkillLevel().toString() : null,
+                user.getIsVerified(),
+                user.getIsBanned(),
+                user.getBanReason(),
+                user.getFairPlayScore(),
+                user.getTotalReviews(),
+                user.getAverageRating()
         ));
     }
 
@@ -149,6 +236,16 @@ public class AuthController {
         private String token;
         private String role;
         private String avatar;
+        private String phone;
+        private User.Location location;
+        private String preferredPosition;
+        private String skillLevel;
+        private Boolean isVerified;
+        private Boolean isBanned;
+        private String banReason;
+        private Integer fairPlayScore;
+        private Integer totalReviews;
+        private Double averageRating;
     }
 
     @lombok.Data
@@ -166,5 +263,17 @@ public class AuthController {
         @NotBlank(message = "password is required")
         @Size(min = 8, message = "password must be at least 8 characters")
         private String password;
+    }
+
+    @lombok.Data
+    @lombok.AllArgsConstructor
+    @lombok.NoArgsConstructor
+    public static class UpdateProfileRequest {
+        private String name;
+        private String phone;
+        private String avatar;
+        private User.Location location;
+        private String preferredPosition;
+        private String skillLevel;
     }
 }

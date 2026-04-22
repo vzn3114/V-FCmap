@@ -13,6 +13,10 @@ const bookingService = {
     const response = await apiClient.post(`/bookings/${bookingId}/payment`, payload);
     return response.data;
   },
+  cancelBooking: async (bookingId, payload) => {
+    const response = await apiClient.put(`/bookings/${bookingId}/cancel`, payload);
+    return response.data;
+  },
 };
 
 export default bookingService;

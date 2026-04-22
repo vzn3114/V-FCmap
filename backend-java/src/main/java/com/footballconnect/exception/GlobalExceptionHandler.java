@@ -32,6 +32,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.UNAUTHORIZED, safeMessage(ex.getMessage(), "Unauthorized"));
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiErrorResponse> handleForbidden(ForbiddenException ex) {
+        return build(HttpStatus.FORBIDDEN, safeMessage(ex.getMessage(), "Forbidden"));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleInternalError(Exception ex) {
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");

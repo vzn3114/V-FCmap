@@ -9,18 +9,44 @@ const initialState = {
   token: storedToken || null,
   user: storedUser ? JSON.parse(storedUser) : null,
   loading: false,
+  error: null,
+  profileUpdating: false,
+  profileError: null,
 };
 
-export const login = createAsyncThunk("auth/login", async (payload) => {
-  return authService.login(payload);
+const getErrorMessage = (error) =>
+  error?.response?.data?.message || error?.message || "Yeu cau that bai";
+
+export const login = createAsyncThunk("auth/login", async (payload, { rejectWithValue }) => {
+  try {
+    return await authService.login(payload);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
 });
 
-export const register = createAsyncThunk("auth/register", async (payload) => {
-  return authService.register(payload);
+export const register = createAsyncThunk("auth/register", async (payload, { rejectWithValue }) => {
+  try {
+    return await authService.register(payload);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
 });
 
-export const fetchCurrentUser = createAsyncThunk("auth/fetchCurrentUser", async () => {
-  return authService.me();
+export const fetchCurrentUser = createAsyncThunk("auth/fetchCurrentUser", async (_, { rejectWithValue }) => {
+  try {
+    return await authService.me();
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+export const updateProfile = createAsyncThunk("auth/updateProfile", async (payload, { rejectWithValue }) => {
+  try {
+    return await authService.updateMe(payload);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
 });
 
 const authSlice = createSlice({
@@ -38,45 +64,63 @@ const authSlice = createSlice({
     builder
       .addCase(login.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = {
-          id: action.payload.id,
-          name: action.payload.name,
-          email: action.payload.email,
-          role: action.payload.role,
-          avatar: action.payload.avatar,
-        };
+        state.user = { ...action.payload };
         state.token = action.payload.token;
         localStorage.setItem(TOKEN_KEY, action.payload.token);
         localStorage.setItem(USER_KEY, JSON.stringify(state.user));
       })
-      .addCase(login.rejected, (state) => {
+      .addCase(login.rejected, (state, action) => {
         state.loading = false;
+        state.error = action.payload || "Dang nhap that bai";
       })
       .addCase(register.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(register.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = {
-          id: action.payload.id,
-          name: action.payload.name,
-          email: action.payload.email,
-          role: action.payload.role,
-          avatar: action.payload.avatar,
-        };
+        state.user = { ...action.payload };
         state.token = action.payload.token;
         localStorage.setItem(TOKEN_KEY, action.payload.token);
         localStorage.setItem(USER_KEY, JSON.stringify(state.user));
       })
-      .addCase(register.rejected, (state) => {
+      .addCase(register.rejected, (state, action) => {
         state.loading = false;
+        state.error = action.payload || "Dang ky that bai";
+      })
+      .addCase(fetchCurrentUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
       })
       .addCase(fetchCurrentUser.fulfilled, (state, action) => {
+        state.loading = false;
         state.user = action.payload;
         localStorage.setItem(USER_KEY, JSON.stringify(action.payload));
+      })
+      .addCase(fetchCurrentUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || "Khong the tai thong tin nguoi dung";
+        state.token = null;
+        state.user = null;
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+      })
+      .addCase(updateProfile.pending, (state) => {
+        state.profileUpdating = true;
+        state.profileError = null;
+      })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.profileUpdating = false;
+        state.user = action.payload;
+        localStorage.setItem(USER_KEY, JSON.stringify(action.payload));
+      })
+      .addCase(updateProfile.rejected, (state, action) => {
+        state.profileUpdating = false;
+        state.profileError = action.payload || "Khong the cap nhat ho so";
       });
   },
 });
