@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.footballconnect.domain.entity.User;
 import com.footballconnect.domain.repository.UserRepository;
 import com.footballconnect.dto.AuthRequest;
+import com.footballconnect.dto.DtoMapper;
+import com.footballconnect.dto.UserResponse;
 import com.footballconnect.exception.BadRequestException;
 import com.footballconnect.exception.ResourceNotFoundException;
 import com.footballconnect.security.JwtTokenProvider;
@@ -55,7 +57,7 @@ public class AuthController {
      * POST /api/auth/login
      */
     @PostMapping("/login")
-        public ResponseEntity<?> login(@Valid @RequestBody AuthRequest loginRequest) {
+    public ResponseEntity<?> login(@Valid @RequestBody AuthRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
             new UsernamePasswordAuthenticationToken(
                 loginRequest.getEmail(),
@@ -70,24 +72,7 @@ public class AuthController {
 
         String jwt = jwtTokenProvider.generateToken(user.getId().toString(), user.getEmail(), user.getRole().toString());
 
-        return ResponseEntity.ok(new AuthResponse(
-            user.getId(),
-            user.getName(),
-            user.getEmail(),
-            jwt,
-            user.getRole().toString(),
-            user.getAvatar(),
-            user.getPhone(),
-            user.getLocation(),
-            user.getPreferredPosition() != null ? user.getPreferredPosition().toString() : null,
-            user.getSkillLevel() != null ? user.getSkillLevel().toString() : null,
-            user.getIsVerified(),
-            user.getIsBanned(),
-            user.getBanReason(),
-            user.getFairPlayScore(),
-            user.getTotalReviews(),
-            user.getAverageRating()
-        ));
+        return ResponseEntity.ok(buildAuthResponse(user, jwt));
     }
 
     /**
@@ -113,24 +98,7 @@ public class AuthController {
 
         String jwt = jwtTokenProvider.generateToken(user.getId().toString(), user.getEmail(), user.getRole().toString());
 
-        return ResponseEntity.ok(new AuthResponse(
-                user.getId(),
-                user.getName(),
-                user.getEmail(),
-                jwt,
-                user.getRole().toString(),
-            user.getAvatar(),
-            user.getPhone(),
-            user.getLocation(),
-            user.getPreferredPosition() != null ? user.getPreferredPosition().toString() : null,
-            user.getSkillLevel() != null ? user.getSkillLevel().toString() : null,
-            user.getIsVerified(),
-            user.getIsBanned(),
-            user.getBanReason(),
-            user.getFairPlayScore(),
-            user.getTotalReviews(),
-            user.getAverageRating()
-        ));
+        return ResponseEntity.ok(buildAuthResponse(user, jwt));
     }
 
     /**
@@ -148,24 +116,7 @@ public class AuthController {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        return ResponseEntity.ok(new AuthResponse(
-                user.getId(),
-                user.getName(),
-                user.getEmail(),
-                null,
-                user.getRole().toString(),
-                user.getAvatar(),
-                user.getPhone(),
-                user.getLocation(),
-                user.getPreferredPosition() != null ? user.getPreferredPosition().toString() : null,
-                user.getSkillLevel() != null ? user.getSkillLevel().toString() : null,
-                user.getIsVerified(),
-                user.getIsBanned(),
-                user.getBanReason(),
-                user.getFairPlayScore(),
-                user.getTotalReviews(),
-                user.getAverageRating()
-        ));
+        return ResponseEntity.ok(buildAuthResponse(user, null));
     }
 
     /**
@@ -204,28 +155,36 @@ public class AuthController {
 
         userRepository.save(user);
 
-        return ResponseEntity.ok(new AuthResponse(
-                user.getId(),
-                user.getName(),
-                user.getEmail(),
-                null,
-                user.getRole().toString(),
-                user.getAvatar(),
-                user.getPhone(),
-                user.getLocation(),
-                user.getPreferredPosition() != null ? user.getPreferredPosition().toString() : null,
-                user.getSkillLevel() != null ? user.getSkillLevel().toString() : null,
-                user.getIsVerified(),
-                user.getIsBanned(),
-                user.getBanReason(),
-                user.getFairPlayScore(),
-                user.getTotalReviews(),
-                user.getAverageRating()
-        ));
+        return ResponseEntity.ok(buildAuthResponse(user, null));
     }
 
     /**
-     * Simple response DTO classes
+     * Build AuthResponse from User entity using DtoMapper — eliminates code duplication.
+     */
+    private AuthResponse buildAuthResponse(User user, String token) {
+        UserResponse dto = DtoMapper.toUserResponse(user);
+        return new AuthResponse(
+                dto.getId(),
+                dto.getName(),
+                dto.getEmail(),
+                token,
+                dto.getRole(),
+                dto.getAvatar(),
+                dto.getPhone(),
+                dto.getLocation(),
+                dto.getPreferredPosition(),
+                dto.getSkillLevel(),
+                dto.getIsVerified(),
+                dto.getIsBanned(),
+                dto.getBanReason(),
+                dto.getFairPlayScore(),
+                dto.getTotalReviews(),
+                dto.getAverageRating()
+        );
+    }
+
+    /**
+     * Response DTO classes
      */
     @lombok.Data
     @lombok.AllArgsConstructor
@@ -237,7 +196,7 @@ public class AuthController {
         private String role;
         private String avatar;
         private String phone;
-        private User.Location location;
+        private UserResponse.LocationDto location;
         private String preferredPosition;
         private String skillLevel;
         private Boolean isVerified;

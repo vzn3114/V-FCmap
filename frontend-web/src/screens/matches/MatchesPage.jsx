@@ -95,15 +95,15 @@ export default function MatchesPage() {
 
             <form className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-12" onSubmit={onCreate}>
               <div className="md:col-span-2">
-                <label className="label-base">Home Team ID</label>
+                <label className="label-base">ID Đội Nhà</label>
                 <input className="input-base" type="number" value={createForm.homeTeamId} onChange={(e) => setCreateForm((prev) => ({ ...prev, homeTeamId: e.target.value }))} required />
               </div>
               <div className="md:col-span-2">
-                <label className="label-base">Away Team ID</label>
+                <label className="label-base">ID Đội Khách</label>
                 <input className="input-base" type="number" value={createForm.awayTeamId} onChange={(e) => setCreateForm((prev) => ({ ...prev, awayTeamId: e.target.value }))} required />
               </div>
               <div className="md:col-span-2">
-                <label className="label-base">Venue ID</label>
+                <label className="label-base">ID Sân</label>
                 <input className="input-base" type="number" value={createForm.venueId} onChange={(e) => setCreateForm((prev) => ({ ...prev, venueId: e.target.value }))} />
               </div>
               <div className="md:col-span-3">
@@ -136,32 +136,32 @@ export default function MatchesPage() {
           {updateError ? <p className="mt-2 text-sm text-red-600">Lỗi cập nhật: {updateError}</p> : null}
           <form className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-12" onSubmit={onUpdateResult}>
             <div className="md:col-span-2">
-              <label className="label-base">Match ID</label>
+              <label className="label-base">ID Trận</label>
               <input className="input-base" type="number" value={resultForm.matchId} onChange={(e) => setResultForm((prev) => ({ ...prev, matchId: e.target.value }))} required />
             </div>
             <div className="md:col-span-2">
-              <label className="label-base">Home Score</label>
+              <label className="label-base">Bàn Thắng Đội Nhà</label>
               <input className="input-base" type="number" value={resultForm.homeScore} onChange={(e) => setResultForm((prev) => ({ ...prev, homeScore: e.target.value }))} required />
             </div>
             <div className="md:col-span-2">
-              <label className="label-base">Away Score</label>
+              <label className="label-base">Bàn Thắng Đội Khách</label>
               <input className="input-base" type="number" value={resultForm.awayScore} onChange={(e) => setResultForm((prev) => ({ ...prev, awayScore: e.target.value }))} required />
             </div>
             <div className="md:col-span-2">
-              <label className="label-base">Result Status</label>
+              <label className="label-base">Trạng Thái Kết Quả</label>
               <select className="input-base" value={resultForm.resultStatus} onChange={(e) => setResultForm((prev) => ({ ...prev, resultStatus: e.target.value }))}>
-                <option value="PENDING">PENDING</option>
-                <option value="CONFIRMED">CONFIRMED</option>
-                <option value="DISPUTED">DISPUTED</option>
-                <option value="RESOLVED">RESOLVED</option>
+                <option value="PENDING">Chờ Xác Nhận</option>
+                <option value="CONFIRMED">Đã Xác Nhận</option>
+                <option value="DISPUTED">Tranh Cãi</option>
+                <option value="RESOLVED">Đã Giải Quyết</option>
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="label-base">Home Points</label>
+              <label className="label-base">Điểm Đội Nhà</label>
               <input className="input-base" type="number" value={resultForm.homePointsGained} onChange={(e) => setResultForm((prev) => ({ ...prev, homePointsGained: e.target.value }))} />
             </div>
             <div className="md:col-span-2">
-              <label className="label-base">Away Points</label>
+              <label className="label-base">Điểm Đội Khách</label>
               <input className="input-base" type="number" value={resultForm.awayPointsGained} onChange={(e) => setResultForm((prev) => ({ ...prev, awayPointsGained: e.target.value }))} />
             </div>
             <div className="md:col-span-12 flex justify-end">
@@ -184,11 +184,11 @@ export default function MatchesPage() {
               <thead>
                 <tr className="border-b border-[#d7cbe8] text-left text-[#5f6f65]">
                   <th className="py-2 pr-3">ID</th>
-                  <th className="py-2 pr-3">Home</th>
-                  <th className="py-2 pr-3">Away</th>
-                  <th className="py-2 pr-3">Time</th>
-                  <th className="py-2 pr-3">Status</th>
-                  <th className="py-2">Score</th>
+                  <th className="py-2 pr-3">Đội Nhà</th>
+                  <th className="py-2 pr-3">Đội Khách</th>
+                  <th className="py-2 pr-3">Thời Gian</th>
+                  <th className="py-2 pr-3">Trạng Thái</th>
+                  <th className="py-2">Tỉ Số</th>
                 </tr>
               </thead>
               <tbody>

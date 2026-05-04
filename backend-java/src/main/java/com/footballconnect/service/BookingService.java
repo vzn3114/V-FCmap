@@ -15,6 +15,7 @@ import com.footballconnect.domain.repository.TeamRepository;
 import com.footballconnect.domain.repository.UserRepository;
 import com.footballconnect.domain.repository.VenueRepository;
 import com.footballconnect.exception.BadRequestException;
+import com.footballconnect.exception.ConflictException;
 import com.footballconnect.exception.ResourceNotFoundException;
 import com.footballconnect.exception.UnauthorizedException;
 import com.footballconnect.service.payment.PaymentProcessorFactory;
@@ -102,7 +103,7 @@ public class BookingService {
                 ACTIVE_STATUSES
         );
         if (overlapped) {
-            throw new BadRequestException("Selected field is already booked for this time range");
+            throw new ConflictException("Selected field is already booked for this time range");
         }
 
         Booking booking = Booking.builder()

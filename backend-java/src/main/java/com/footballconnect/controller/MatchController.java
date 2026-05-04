@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.footballconnect.domain.entity.Match;
+import com.footballconnect.dto.DtoMapper;
+import com.footballconnect.dto.MatchResponse;
 import com.footballconnect.service.MatchService;
 
 import jakarta.validation.Valid;
@@ -36,18 +38,18 @@ public class MatchController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Match>> getMatches(@RequestParam(required = false) String status,
+    public ResponseEntity<List<MatchResponse>> getMatches(@RequestParam(required = false) String status,
                                                   @RequestParam(required = false) Long teamId) {
-        return ResponseEntity.ok(matchService.getMatches(status, teamId));
+        return ResponseEntity.ok(DtoMapper.toMatchResponseList(matchService.getMatches(status, teamId)));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Match> getMatchById(@PathVariable Long id) {
-        return ResponseEntity.ok(matchService.getMatchById(id));
+    public ResponseEntity<MatchResponse> getMatchById(@PathVariable Long id) {
+        return ResponseEntity.ok(DtoMapper.toMatchResponse(matchService.getMatchById(id)));
     }
 
     @PostMapping
-    public ResponseEntity<Match> createMatch(@Valid @RequestBody CreateMatchRequest request) {
+    public ResponseEntity<MatchResponse> createMatch(@Valid @RequestBody CreateMatchRequest request) {
         Match match = matchService.createMatch(
                 request.getHomeTeamId(),
                 request.getAwayTeamId(),
@@ -58,11 +60,11 @@ public class MatchController {
                 request.getNotes(),
                 request.getIsRanked()
         );
-        return ResponseEntity.ok(match);
+        return ResponseEntity.ok(DtoMapper.toMatchResponse(match));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Match> updateMatch(@PathVariable Long id,
+    public ResponseEntity<MatchResponse> updateMatch(@PathVariable Long id,
                                              @Valid @RequestBody UpdateMatchRequest request) {
         Match match = matchService.updateMatch(
                 id,
@@ -74,11 +76,11 @@ public class MatchController {
                 request.getNotes(),
                 request.getIsRanked()
         );
-        return ResponseEntity.ok(match);
+        return ResponseEntity.ok(DtoMapper.toMatchResponse(match));
     }
 
     @PutMapping("/{id}/result")
-    public ResponseEntity<Match> updateResult(@PathVariable Long id,
+    public ResponseEntity<MatchResponse> updateResult(@PathVariable Long id,
                                               @Valid @RequestBody MatchResultRequest request) {
         Match match = matchService.updateResult(
                 id,
@@ -88,7 +90,7 @@ public class MatchController {
                 request.getHomePointsGained(),
                 request.getAwayPointsGained()
         );
-        return ResponseEntity.ok(match);
+        return ResponseEntity.ok(DtoMapper.toMatchResponse(match));
     }
 
     @DeleteMapping("/{id}")

@@ -10,6 +10,8 @@ import com.footballconnect.domain.entity.User;
 import com.footballconnect.domain.repository.TeamRepository;
 import com.footballconnect.domain.repository.UserRepository;
 import com.footballconnect.exception.BadRequestException;
+import com.footballconnect.exception.ConflictException;
+import com.footballconnect.exception.ForbiddenException;
 import com.footballconnect.exception.ResourceNotFoundException;
 
 @Service
@@ -57,7 +59,7 @@ public class TeamService {
         User captain = findUserByEmail(email);
 
         if (teamRepository.existsByName(name)) {
-            throw new BadRequestException("Team name already exists");
+            throw new ConflictException("Team name already exists");
         }
 
         Team team = Team.builder()
@@ -81,6 +83,7 @@ public class TeamService {
      * Update team
      */
     public Team updateTeam(Long teamId,
+                           String actorEmail,
                            String newName,
                            String newLogo,
                            String teamDescription,
@@ -93,11 +96,13 @@ public class TeamService {
                            Boolean isVerified,
                            Boolean isBanned,
                            String banReason) {
+        User actor = findUserByEmail(actorEmail);
         Team team = getTeamById(teamId);
+        ensureCanManageTeam(team, actor);
 
         if (newName != null && !newName.isBlank()) {
             if (!newName.equals(team.getName()) && teamRepository.existsByName(newName)) {
-                throw new BadRequestException("Team name already exists");
+                throw new ConflictException("Team name already exists");
             }
             team.setName(newName);
         }
@@ -174,8 +179,10 @@ public class TeamService {
     /**
      * Add member to team
      */
-    public Team addMemberToTeam(Long teamId, Long userId) {
+    public Team addMemberToTeam(Long teamId, Long userId, String actorEmail) {
         Team team = getTeamById(teamId);
+        User actor = findUserByEmail(actorEmail);
+        ensureCanManageTeam(team, actor);
         User user = findUserById(userId);
 
         Team.TeamMember member = Team.TeamMember.builder()
@@ -212,5 +219,16 @@ public class TeamService {
     private User findUserById(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    }
+
+    private void ensureCanManageTeam(Team team, User actor) {
+        if (actor.getRole() == User.Role.ADMIN) {
+            return;
+        }
+
+        Long captainId = team.getCaptain() != null ? team.getCaptain().getId() : null;
+        if (captainId == null || !captainId.equals(actor.getId())) {
+            throw new ForbiddenException("Only team captain or admin can manage this team");
+        }
     }
 }

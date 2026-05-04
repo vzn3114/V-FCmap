@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.footballconnect.domain.entity.Review;
+import com.footballconnect.dto.DtoMapper;
+import com.footballconnect.dto.ReviewResponse;
 import com.footballconnect.service.ReviewService;
 
 import jakarta.validation.Valid;
@@ -38,20 +40,20 @@ public class ReviewController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Review>> getReviews(@RequestParam(required = false) Long venueId,
+    public ResponseEntity<List<ReviewResponse>> getReviews(@RequestParam(required = false) Long venueId,
                                                    @RequestParam(required = false) Long teamId,
                                                    @RequestParam(required = false) Long userId,
                                                    @RequestParam(required = false) Long reviewerId) {
-        return ResponseEntity.ok(reviewService.getReviews(venueId, teamId, userId, reviewerId));
+        return ResponseEntity.ok(DtoMapper.toReviewResponseList(reviewService.getReviews(venueId, teamId, userId, reviewerId)));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Review> getReviewById(@PathVariable Long id) {
-        return ResponseEntity.ok(reviewService.getReviewById(id));
+    public ResponseEntity<ReviewResponse> getReviewById(@PathVariable Long id) {
+        return ResponseEntity.ok(DtoMapper.toReviewResponse(reviewService.getReviewById(id)));
     }
 
     @PostMapping
-    public ResponseEntity<Review> createReview(@Valid @RequestBody CreateReviewRequest request) {
+    public ResponseEntity<ReviewResponse> createReview(@Valid @RequestBody CreateReviewRequest request) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Review review = reviewService.createReview(
                 email,
@@ -68,11 +70,11 @@ public class ReviewController {
                 request.getValue(),
                 request.getIsVerified()
         );
-        return ResponseEntity.ok(review);
+        return ResponseEntity.ok(DtoMapper.toReviewResponse(review));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Review> updateReview(@PathVariable Long id,
+    public ResponseEntity<ReviewResponse> updateReview(@PathVariable Long id,
                                                @Valid @RequestBody UpdateReviewRequest request) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Review review = reviewService.updateReview(
@@ -87,7 +89,7 @@ public class ReviewController {
                 request.getResponse(),
                 request.getIsVerified()
         );
-        return ResponseEntity.ok(review);
+        return ResponseEntity.ok(DtoMapper.toReviewResponse(review));
     }
 
     @DeleteMapping("/{id}")

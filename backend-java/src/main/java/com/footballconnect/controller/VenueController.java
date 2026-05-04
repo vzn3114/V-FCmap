@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.footballconnect.domain.entity.Venue;
+import com.footballconnect.dto.DtoMapper;
+import com.footballconnect.dto.VenueResponse;
 import com.footballconnect.service.VenueService;
 
 import jakarta.validation.Valid;
@@ -44,7 +46,7 @@ public class VenueController {
      * GET /api/venues
      */
     @GetMapping
-    public ResponseEntity<List<Venue>> searchVenues(
+    public ResponseEntity<List<VenueResponse>> searchVenues(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) Double minPrice,
             @RequestParam(required = false) Double maxPrice,
@@ -55,7 +57,7 @@ public class VenueController {
             @RequestParam(required = false) Double minRating,
             @RequestParam(required = false) String fieldType) {
         List<Venue> venues = venueService.searchVenues(name, minPrice, maxPrice, district, city, hasParking, verified, minRating, fieldType);
-        return ResponseEntity.ok(venues);
+        return ResponseEntity.ok(DtoMapper.toVenueResponseList(venues));
     }
 
     /**
@@ -63,12 +65,12 @@ public class VenueController {
      * GET /api/venues/nearby
      */
     @GetMapping("/nearby")
-    public ResponseEntity<List<Venue>> getNearbyVenues(
+    public ResponseEntity<List<VenueResponse>> getNearbyVenues(
             @RequestParam Double latitude,
             @RequestParam Double longitude,
             @RequestParam(defaultValue = "5000") Integer maxDistance) {
         List<Venue> venues = venueService.getNearbyVenues(latitude, longitude, maxDistance);
-        return ResponseEntity.ok(venues);
+        return ResponseEntity.ok(DtoMapper.toVenueResponseList(venues));
     }
 
     /**
@@ -76,9 +78,9 @@ public class VenueController {
      * GET /api/venues/{id}
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Venue> getVenueById(@PathVariable Long id) {
+    public ResponseEntity<VenueResponse> getVenueById(@PathVariable Long id) {
         Venue venue = venueService.getVenueById(id);
-        return ResponseEntity.ok(venue);
+        return ResponseEntity.ok(DtoMapper.toVenueResponse(venue));
     }
 
     /**
@@ -86,7 +88,7 @@ public class VenueController {
      * POST /api/venues/owner
      */
     @PostMapping("/owner")
-    public ResponseEntity<?> createVenue(@Valid @RequestBody VenueRequest venueRequest) {
+    public ResponseEntity<VenueResponse> createVenue(@Valid @RequestBody VenueRequest venueRequest) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Venue venue = venueService.createVenue(
             email,
@@ -104,7 +106,7 @@ public class VenueController {
                 venueRequest.getTotalBookings(),
                 venueRequest.getIsVerified()
         );
-        return ResponseEntity.ok(venue);
+        return ResponseEntity.ok(DtoMapper.toVenueResponse(venue));
     }
 
     /**
@@ -112,7 +114,7 @@ public class VenueController {
      * PUT /api/venues/{id}
      */
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateVenue(@PathVariable Long id, @Valid @RequestBody VenueRequest venueRequest) {
+    public ResponseEntity<VenueResponse> updateVenue(@PathVariable Long id, @Valid @RequestBody VenueRequest venueRequest) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Venue venue = venueService.updateVenue(
                 id,
@@ -132,7 +134,7 @@ public class VenueController {
                 venueRequest.getIsVerified(),
                 venueRequest.getStatus()
         );
-        return ResponseEntity.ok(venue);
+        return ResponseEntity.ok(DtoMapper.toVenueResponse(venue));
     }
 
     /**

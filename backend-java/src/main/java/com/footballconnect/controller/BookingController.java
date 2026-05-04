@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.footballconnect.domain.entity.Booking;
+import com.footballconnect.dto.BookingResponse;
+import com.footballconnect.dto.DtoMapper;
 import com.footballconnect.service.BookingService;
 
 import jakarta.validation.Valid;
@@ -40,10 +42,10 @@ public class BookingController {
      * GET /api/bookings/me
      */
     @GetMapping("/me")
-    public ResponseEntity<?> getMyBookings() {
+    public ResponseEntity<List<BookingResponse>> getMyBookings() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         List<Booking> bookings = bookingService.getMyBookings(email);
-        return ResponseEntity.ok(bookings);
+        return ResponseEntity.ok(DtoMapper.toBookingResponseList(bookings));
     }
 
     /**
@@ -51,10 +53,10 @@ public class BookingController {
      * GET /api/bookings/{id}
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Booking> getBookingById(@PathVariable Long id) {
+    public ResponseEntity<BookingResponse> getBookingById(@PathVariable Long id) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Booking booking = bookingService.getBookingForCurrentUser(id, email);
-        return ResponseEntity.ok(booking);
+        return ResponseEntity.ok(DtoMapper.toBookingResponse(booking));
     }
 
     /**
@@ -62,7 +64,7 @@ public class BookingController {
      * POST /api/bookings
      */
     @PostMapping
-    public ResponseEntity<?> createBooking(@Valid @RequestBody BookingRequest bookingRequest) {
+    public ResponseEntity<BookingResponse> createBooking(@Valid @RequestBody BookingRequest bookingRequest) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Booking savedBooking = bookingService.createBooking(
                 email,
@@ -76,7 +78,7 @@ public class BookingController {
                 bookingRequest.getNotes(),
                 bookingRequest.getBillSplits()
         );
-        return ResponseEntity.ok(savedBooking);
+        return ResponseEntity.ok(DtoMapper.toBookingResponse(savedBooking));
     }
 
     /**
@@ -84,10 +86,10 @@ public class BookingController {
      * POST /api/bookings/{id}/checkin
      */
     @PostMapping("/{id}/checkin")
-    public ResponseEntity<?> checkIn(@PathVariable Long id, @RequestBody CheckInRequest checkInRequest) {
+    public ResponseEntity<BookingResponse> checkIn(@PathVariable Long id, @RequestBody CheckInRequest checkInRequest) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Booking updated = bookingService.checkIn(id, email);
-        return ResponseEntity.ok(updated);
+        return ResponseEntity.ok(DtoMapper.toBookingResponse(updated));
     }
 
     /**
@@ -106,10 +108,10 @@ public class BookingController {
      * PUT /api/bookings/{id}/cancel
      */
     @PutMapping("/{id}/cancel")
-    public ResponseEntity<?> cancelBooking(@PathVariable Long id, @RequestBody CancelBookingRequest request) {
+    public ResponseEntity<BookingResponse> cancelBooking(@PathVariable Long id, @RequestBody CancelBookingRequest request) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Booking booking = bookingService.cancelBooking(id, email, request.getCancellationReason());
-        return ResponseEntity.ok(booking);
+        return ResponseEntity.ok(DtoMapper.toBookingResponse(booking));
     }
 
     /**

@@ -7,10 +7,10 @@ import toast from "react-hot-toast";
 import { login, register } from "../../redux/slices/authSlice";
 
 function validateRegister(values) {
-  if (!values.name?.trim()) return "Ho ten khong duoc de trong";
-  if (!values.email?.trim()) return "Email khong duoc de trong";
-  if (!/\S+@\S+\.\S+/.test(values.email)) return "Email khong hop le";
-  if (!values.password || values.password.length < 8) return "Mat khau toi thieu 8 ky tu";
+  if (!values.name?.trim()) return "Họ tên không được để trống";
+  if (!values.email?.trim()) return "Email không được để trống";
+  if (!/\S+@\S+\.\S+/.test(values.email)) return "Email không hợp lệ";
+  if (!values.password || values.password.length < 8) return "Mật khẩu tối thiểu 8 ký tự";
   return null;
 }
 
@@ -41,7 +41,7 @@ export default function AuthPage() {
 
     if (mode === "login") {
       if (!form.email || !form.password) {
-        toast.error("Vui long nhap day du email va mat khau");
+        toast.error("Vui lòng nhập đầy đủ email và mật khẩu");
         return;
       }
       const result = await dispatch(login({ email: form.email, password: form.password }));

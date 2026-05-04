@@ -6,9 +6,11 @@ const initialState = {
   loading: false,
   creating: false,
   updating: false,
+  inviting: false,
   error: null,
   createError: null,
   updateError: null,
+  inviteError: null,
   filters: {
     tier: "",
     minRankingPoints: 0,
@@ -37,6 +39,14 @@ export const createTeam = createAsyncThunk("teams/createTeam", async (payload, {
 export const updateTeam = createAsyncThunk("teams/updateTeam", async ({ teamId, payload }, { rejectWithValue }) => {
   try {
     return await teamService.updateTeam(teamId, payload);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+export const addTeamMember = createAsyncThunk("teams/addTeamMember", async ({ teamId, userId }, { rejectWithValue }) => {
+  try {
+    return await teamService.addMember(teamId, userId);
   } catch (error) {
     return rejectWithValue(getErrorMessage(error));
   }
@@ -87,6 +97,18 @@ const teamSlice = createSlice({
       .addCase(updateTeam.rejected, (state, action) => {
         state.updating = false;
         state.updateError = action.payload || "Khong the cap nhat doi";
+      })
+      .addCase(addTeamMember.pending, (state) => {
+        state.inviting = true;
+        state.inviteError = null;
+      })
+      .addCase(addTeamMember.fulfilled, (state, action) => {
+        state.inviting = false;
+        state.items = state.items.map((item) => (item.id === action.payload.id ? action.payload : item));
+      })
+      .addCase(addTeamMember.rejected, (state, action) => {
+        state.inviting = false;
+        state.inviteError = action.payload || "Khong the moi thanh vien";
       });
   },
 });

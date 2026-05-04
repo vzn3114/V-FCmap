@@ -71,51 +71,51 @@ export default function ReviewsPage() {
 
         <form className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-12" onSubmit={onCreate}>
           <div className="md:col-span-3">
-            <label className="label-base">Review Type</label>
+            <label className="label-base">Loại Đánh Giá</label>
             <select className="input-base" value={form.reviewType} onChange={(e) => setForm((prev) => ({ ...prev, reviewType: e.target.value }))}>
-              <option value="VENUE">VENUE</option>
-              <option value="TEAM">TEAM</option>
-              <option value="USER">USER</option>
+              <option value="VENUE">Sân</option>
+              <option value="TEAM">Đội</option>
+              <option value="USER">Người Dùng</option>
             </select>
           </div>
           <div className="md:col-span-2">
-            <label className="label-base">Venue ID</label>
+            <label className="label-base">ID Sân</label>
             <input className="input-base" type="number" value={form.venueId} onChange={(e) => setForm((prev) => ({ ...prev, venueId: e.target.value }))} />
           </div>
           <div className="md:col-span-2">
-            <label className="label-base">Team ID</label>
+            <label className="label-base">ID Đội</label>
             <input className="input-base" type="number" value={form.teamId} onChange={(e) => setForm((prev) => ({ ...prev, teamId: e.target.value }))} />
           </div>
           <div className="md:col-span-2">
-            <label className="label-base">User ID</label>
+            <label className="label-base">ID Người Dùng</label>
             <input className="input-base" type="number" value={form.userId} onChange={(e) => setForm((prev) => ({ ...prev, userId: e.target.value }))} />
           </div>
           <div className="md:col-span-3">
-            <label className="label-base">Booking ID</label>
+            <label className="label-base">ID Đặt Sân</label>
             <input className="input-base" type="number" value={form.bookingId} onChange={(e) => setForm((prev) => ({ ...prev, bookingId: e.target.value }))} />
           </div>
           <div className="md:col-span-2">
-            <label className="label-base">Rating</label>
+            <label className="label-base">Đánh Giá (1-5)</label>
             <input className="input-base" type="number" min="1" max="5" value={form.rating} onChange={(e) => setForm((prev) => ({ ...prev, rating: e.target.value }))} required />
           </div>
           <div className="md:col-span-2">
-            <label className="label-base">Facilities</label>
+            <label className="label-base">Tiện Nghi</label>
             <input className="input-base" type="number" min="1" max="5" value={form.facilities} onChange={(e) => setForm((prev) => ({ ...prev, facilities: e.target.value }))} />
           </div>
           <div className="md:col-span-2">
-            <label className="label-base">Cleanliness</label>
+            <label className="label-base">Sạch Sẽ</label>
             <input className="input-base" type="number" min="1" max="5" value={form.cleanliness} onChange={(e) => setForm((prev) => ({ ...prev, cleanliness: e.target.value }))} />
           </div>
           <div className="md:col-span-2">
-            <label className="label-base">Service</label>
+            <label className="label-base">Dịch Vụ</label>
             <input className="input-base" type="number" min="1" max="5" value={form.service} onChange={(e) => setForm((prev) => ({ ...prev, service: e.target.value }))} />
           </div>
           <div className="md:col-span-2">
-            <label className="label-base">Value</label>
+            <label className="label-base">Giá Trị</label>
             <input className="input-base" type="number" min="1" max="5" value={form.value} onChange={(e) => setForm((prev) => ({ ...prev, value: e.target.value }))} />
           </div>
           <div className="md:col-span-12">
-            <label className="label-base">Comment</label>
+            <label className="label-base">Bình Luận</label>
             <textarea className="input-base min-h-24" value={form.comment} onChange={(e) => setForm((prev) => ({ ...prev, comment: e.target.value }))} />
           </div>
           <div className="md:col-span-12 flex justify-end">
@@ -137,15 +137,15 @@ export default function ReviewsPage() {
             {items.map((review) => (
               <article className="rounded-xl border border-[#d8cdea] bg-white/75 p-4" key={review.id}>
                 <div className="flex items-center justify-between">
-                  <p className="font-semibold text-[#263229]">Review #{review.id} - {review.reviewType}</p>
+                  <p className="font-semibold text-[#263229]">Đánh Giá #{review.id} - {review.reviewType}</p>
                   {canDeleteReview(review) ? (
                     <button className="btn-secondary" disabled={deleting} onClick={() => onDelete(review.id)} type="button">
                       {deleting ? "Đang xoá..." : "Xoá"}
                     </button>
                   ) : null}
                 </div>
-                <p className="mt-1 text-sm text-[#5f6f65]">Rating: {review.rating} | is_verified: {String(review.is_verified ?? review.isVerified ?? false)}</p>
-                <p className="mt-2 text-sm text-[#33413a]">{review.comment || "(Không có comment)"}</p>
+                <p className="mt-1 text-sm text-[#5f6f65]">Đánh Giá: {review.rating} | is_verified: {String(review.is_verified ?? review.isVerified ?? false)}</p>
+                <p className="mt-2 text-sm text-[#33413a]">{review.comment || "(Không có bình luận)"}</p>
               </article>
             ))}
           </div>

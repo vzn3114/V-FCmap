@@ -305,7 +305,7 @@ export default function VenuesPage() {
         weekendRate: createForm.weekendPrice === "" ? null : Number(createForm.weekendPrice),
         primeTime: createForm.primePrice === "" ? null : Number(createForm.primePrice),
       },
-      images: createForm.imageUrl ? [{ url: createForm.imageUrl, caption: "Main image" }] : [],
+      images: createForm.imageUrl ? [{ url: createForm.imageUrl, caption: "Ảnh chính" }] : [],
       videos: createForm.videoUrl ? [{ url: createForm.videoUrl, caption: "Video" }] : [],
       popularTimes: createForm.popularTimesText.split(",").map((x) => x.trim()).filter(Boolean),
       qrCodeUrl: createForm.qrCodeUrl || null,
@@ -420,11 +420,11 @@ export default function VenuesPage() {
               <input className="input-base" value={createForm.city} onChange={(e) => setCreateForm((prev) => ({ ...prev, city: e.target.value }))} />
             </div>
             <div className="md:col-span-2">
-              <label className="label-base">Latitude</label>
+              <label className="label-base">Vĩ độ</label>
               <input className="input-base" type="number" value={createForm.latitude} onChange={(e) => setCreateForm((prev) => ({ ...prev, latitude: e.target.value }))} />
             </div>
             <div className="md:col-span-2">
-              <label className="label-base">Longitude</label>
+              <label className="label-base">Kinh độ</label>
               <input className="input-base" type="number" value={createForm.longitude} onChange={(e) => setCreateForm((prev) => ({ ...prev, longitude: e.target.value }))} />
             </div>
             <div className="md:col-span-4">
@@ -444,7 +444,7 @@ export default function VenuesPage() {
               <input className="input-base" value={createForm.imageUrl} onChange={(e) => setCreateForm((prev) => ({ ...prev, imageUrl: e.target.value }))} />
             </div>
             <div className="md:col-span-6">
-              <label className="label-base">Video URL</label>
+              <label className="label-base">Link Video</label>
               <input className="input-base" value={createForm.videoUrl} onChange={(e) => setCreateForm((prev) => ({ ...prev, videoUrl: e.target.value }))} />
             </div>
             <div className="md:col-span-6">
@@ -452,7 +452,7 @@ export default function VenuesPage() {
               <input className="input-base" value={createForm.popularTimesText} onChange={(e) => setCreateForm((prev) => ({ ...prev, popularTimesText: e.target.value }))} placeholder="18:00-19:30, 20:00-21:30" />
             </div>
             <div className="md:col-span-6">
-              <label className="label-base">QR Code URL</label>
+              <label className="label-base">Link QR Code</label>
               <input className="input-base" value={createForm.qrCodeUrl} onChange={(e) => setCreateForm((prev) => ({ ...prev, qrCodeUrl: e.target.value }))} />
             </div>
             <div className="md:col-span-12">

@@ -200,6 +200,41 @@ Backend API van chay tai http://localhost:8080.
 - Bổ sung Swagger/OpenAPI config
 - Bổ sung chatbot skeleton (controller/service/dto)
 
+## Mô hình truy cập và permission
+
+Hệ thống kết hợp kiểm soát theo vai trò (RBAC) và kiểm soát theo quyền hạn chi tiết (permission-based):
+
+- Vai trò cấp cao: ADMIN, VENUE_OWNER, PLAYER/USER
+- Quyền theo cấp trang: route được bảo vệ bằng AccessRoute
+- Quyền theo cấp hành động (CRUD): backend kiểm tra quyền ở service layer, không chỉ ở UI
+- Quyền theo cấp dữ liệu: phân tách dữ liệu của tôi và dữ liệu toàn hệ thống (ví dụ bookings/reports)
+
+### Role PLAYER
+
+Permissions:
+
+- Basic Player:
+	- view_venue
+	- create_booking
+	- view_booking
+
+- Captain (extended):
+	- create_team
+	- manage_team
+	- invite_member
+	- challenge_team
+
+Giao diện frontend hiển thị động theo permission. PLAYER cơ bản chỉ thấy các thao tác cơ bản; khi người dùng là captain, UI mở thêm các thao tác quản lý đội, mời thành viên và thách đấu.
+
+## Luồng chính và bảo mật giao tiếp
+
+- Luồng xác thực: JWT (Spring Security filter + Axios interceptor)
+- Luồng đặt chỗ: tìm kiếm sân -> chi tiết/chọn sân -> đặt chỗ -> thanh toán
+- Luồng điều hướng: protected routes cho các trang cần đăng nhập
+- Xử lý lỗi/ngoại lệ: chuẩn hóa phản hồi cho unauthorized, forbidden, bad request, not found, conflict
+
+Frontend sử dụng Redux Toolkit để quản lý trạng thái và Axios interceptors để gửi JWT, thu hồi phiên khi gặp 401 và hiển thị thông báo lỗi thống nhất.
+
 ## Khắc phục sự cố nhanh
 
 Nếu không mở được Swagger:

@@ -15,7 +15,7 @@ const initialState = {
 };
 
 const getErrorMessage = (error) =>
-  error?.response?.data?.message || error?.message || "Yeu cau that bai";
+  error?.response?.data?.message || error?.message || "Yêu cầu thất bại";
 
 export const login = createAsyncThunk("auth/login", async (payload, { rejectWithValue }) => {
   try {

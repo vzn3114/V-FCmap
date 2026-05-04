@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.footballconnect.domain.entity.Matchmaking;
+import com.footballconnect.dto.DtoMapper;
+import com.footballconnect.dto.MatchmakingResponse;
 import com.footballconnect.service.MatchmakingService;
 
 import jakarta.validation.Valid;
@@ -116,9 +118,9 @@ public class MatchmakingController {
      * PUT /api/matchmaking/{id}/accept
      */
     @PutMapping("/{id}/accept")
-    public ResponseEntity<?> acceptChallenge(@PathVariable Long id, @Valid @RequestBody AcceptChallengeRequest request) {
+    public ResponseEntity<MatchmakingResponse> acceptChallenge(@PathVariable Long id, @Valid @RequestBody AcceptChallengeRequest request) {
         Matchmaking matchmaking = matchmakingService.acceptChallenge(id, request.getTeamId());
-        return ResponseEntity.ok(matchmaking);
+        return ResponseEntity.ok(DtoMapper.toMatchmakingResponse(matchmaking));
     }
 
     /**
@@ -126,9 +128,9 @@ public class MatchmakingController {
      * PUT /api/matchmaking/{id}/decline
      */
     @PutMapping("/{id}/decline")
-    public ResponseEntity<?> declineChallenge(@PathVariable Long id) {
+    public ResponseEntity<MatchmakingResponse> declineChallenge(@PathVariable Long id) {
         Matchmaking matchmaking = matchmakingService.declineChallenge(id);
-        return ResponseEntity.ok(matchmaking);
+        return ResponseEntity.ok(DtoMapper.toMatchmakingResponse(matchmaking));
     }
 
     /**
@@ -136,8 +138,8 @@ public class MatchmakingController {
      * GET /api/matchmaking/active
      */
     @GetMapping("/active")
-    public ResponseEntity<List<Matchmaking>> getActiveMatchmaking() {
-        return ResponseEntity.ok(matchmakingService.getActiveMatchmaking());
+    public ResponseEntity<List<MatchmakingResponse>> getActiveMatchmaking() {
+        return ResponseEntity.ok(DtoMapper.toMatchmakingResponseList(matchmakingService.getActiveMatchmaking()));
     }
 
     @Data

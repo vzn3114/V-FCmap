@@ -15,10 +15,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.footballconnect.domain.entity.Team;
+import com.footballconnect.dto.DtoMapper;
+import com.footballconnect.dto.TeamResponse;
 import com.footballconnect.service.TeamService;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -43,11 +46,11 @@ public class TeamController {
      * GET /api/teams
      */
     @GetMapping
-    public ResponseEntity<List<Team>> getAllTeams(
+    public ResponseEntity<List<TeamResponse>> getAllTeams(
             @RequestParam(required = false) String tier,
             @RequestParam(required = false, defaultValue = "0") Integer minRankingPoints) {
         List<Team> teams = teamService.getAllTeams(tier, minRankingPoints);
-        return ResponseEntity.ok(teams);
+        return ResponseEntity.ok(DtoMapper.toTeamResponseList(teams));
     }
 
     /**
@@ -55,9 +58,9 @@ public class TeamController {
      * GET /api/teams/{id}
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Team> getTeamById(@PathVariable Long id) {
+    public ResponseEntity<TeamResponse> getTeamById(@PathVariable Long id) {
         Team team = teamService.getTeamById(id);
-        return ResponseEntity.ok(team);
+        return ResponseEntity.ok(DtoMapper.toTeamResponse(team));
     }
 
     /**
@@ -65,7 +68,7 @@ public class TeamController {
      * POST /api/teams
      */
     @PostMapping
-    public ResponseEntity<?> createTeam(@Valid @RequestBody TeamRequest teamRequest) {
+    public ResponseEntity<TeamResponse> createTeam(@Valid @RequestBody TeamRequest teamRequest) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Team team = teamService.createTeam(
                 email,
@@ -79,7 +82,7 @@ public class TeamController {
                 teamRequest.getLookingForMatch(),
                 teamRequest.getFairPlayScore()
         );
-        return ResponseEntity.ok(team);
+        return ResponseEntity.ok(DtoMapper.toTeamResponse(team));
     }
 
     /**
@@ -87,9 +90,11 @@ public class TeamController {
      * PUT /api/teams/{id}
      */
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateTeam(@PathVariable Long id, @Valid @RequestBody TeamRequest teamRequest) {
+    public ResponseEntity<TeamResponse> updateTeam(@PathVariable Long id, @Valid @RequestBody TeamRequest teamRequest) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Team team = teamService.updateTeam(
                 id,
+            email,
                 teamRequest.getName(),
                 teamRequest.getLogo(),
                 teamRequest.getTeamDescription(),
@@ -103,7 +108,18 @@ public class TeamController {
                 teamRequest.getIsBanned(),
                 teamRequest.getBanReason()
         );
-        return ResponseEntity.ok(team);
+        return ResponseEntity.ok(DtoMapper.toTeamResponse(team));
+    }
+
+    /**
+     * Invite member to team (captain/admin)
+     * POST /api/teams/{id}/members
+     */
+    @PostMapping("/{id}/members")
+    public ResponseEntity<TeamResponse> addMemberToTeam(@PathVariable Long id, @Valid @RequestBody AddMemberRequest request) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Team team = teamService.addMemberToTeam(id, request.getUserId(), email);
+        return ResponseEntity.ok(DtoMapper.toTeamResponse(team));
     }
 
     /**
@@ -111,9 +127,16 @@ public class TeamController {
      * GET /api/teams/{id}/members
      */
     @GetMapping("/{id}/members")
-    public ResponseEntity<?> getTeamMembers(@PathVariable Long id) {
+    public ResponseEntity<List<TeamResponse.TeamMemberDto>> getTeamMembers(@PathVariable Long id) {
         List<Team.TeamMember> members = teamService.getTeamMembers(id);
-        return ResponseEntity.ok(members);
+        List<TeamResponse.TeamMemberDto> dtos = members.stream()
+                .map(m -> TeamResponse.TeamMemberDto.builder()
+                        .userId(m.getUserId())
+                        .role(m.getRole() != null ? m.getRole().toString() : null)
+                        .joinedAt(m.getJoinedAt())
+                        .build())
+                .toList();
+        return ResponseEntity.ok(dtos);
     }
 
     /**
@@ -121,11 +144,11 @@ public class TeamController {
      * GET /api/teams/tier/{tier}
      */
     @GetMapping("/tier/{tier}")
-    public ResponseEntity<List<Team>> getTeamsByTier(@PathVariable String tier) {
+    public ResponseEntity<List<TeamResponse>> getTeamsByTier(@PathVariable String tier) {
         try {
             Team.Tier tierEnum = Team.Tier.valueOf(tier.toUpperCase());
             List<Team> teams = teamService.getTeamsByTier(tierEnum);
-            return ResponseEntity.ok(teams);
+            return ResponseEntity.ok(DtoMapper.toTeamResponseList(teams));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         }
@@ -162,5 +185,13 @@ public class TeamController {
         private Boolean isBanned;
 
         private String banReason;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AddMemberRequest {
+        @NotNull(message = "userId is required")
+        private Long userId;
     }
 }

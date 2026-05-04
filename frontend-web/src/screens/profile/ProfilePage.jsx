@@ -142,11 +142,11 @@ export default function ProfilePage() {
           <p className="mt-1 text-lg font-semibold text-[#263229]">{profileMeta.banned}</p>
         </div>
         <div className="rounded-xl border border-[#d8cdea] bg-white/75 p-4">
-          <p className="text-xs uppercase tracking-wide text-[#6b7a70]">Fair Play Score</p>
+          <p className="text-xs uppercase tracking-wide text-[#6b7a70]">Điểm Lối Chơi Công Bằng</p>
           <p className="mt-1 text-lg font-semibold text-[#263229]">{profileMeta.fairPlayScore}</p>
         </div>
         <div className="rounded-xl border border-[#d8cdea] bg-white/75 p-4">
-          <p className="text-xs uppercase tracking-wide text-[#6b7a70]">Average Rating</p>
+          <p className="text-xs uppercase tracking-wide text-[#6b7a70]">Đánh Giá Trung Bình</p>
           <p className="mt-1 text-lg font-semibold text-[#263229]">{profileMeta.averageRating}</p>
         </div>
       </div>

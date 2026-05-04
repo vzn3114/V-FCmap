@@ -155,7 +155,7 @@ export default function ReportsPage() {
                   className="input-base"
                   value={draft.action}
                   onChange={(e) => updateDraft(report.id, "action", e.target.value)}
-                  placeholder="warning, temporary ban, resolved..."
+                  placeholder="cảnh báo, cấm tạm thời, đã giải quyết..."
                 />
               </label>
             </div>

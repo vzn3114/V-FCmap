@@ -18,6 +18,10 @@ const teamService = {
     const response = await apiClient.put(`/teams/${teamId}`, payload);
     return mapWithVerified(response.data);
   },
+  addMember: async (teamId, userId) => {
+    const response = await apiClient.post(`/teams/${teamId}/members`, { userId });
+    return mapWithVerified(response.data);
+  },
 };
 
 export default teamService;

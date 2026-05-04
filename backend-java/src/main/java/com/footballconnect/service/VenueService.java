@@ -104,7 +104,8 @@ public class VenueService {
     }
 
     /**
-     * Find nearby venues using Haversine formula
+     * Find nearby venues using native MySQL Haversine query.
+     * Distance calculation is performed in the database for optimal performance.
      */
     public List<Venue> getNearbyVenues(Double latitude, Double longitude, Integer maxDistance) {
         if (latitude == null || longitude == null) {
@@ -113,17 +114,7 @@ public class VenueService {
 
         int distance = maxDistance != null ? maxDistance : 5000;
 
-        return venueRepository.findAll().stream()
-                .filter(v -> {
-                    if (v.getLocation() == null) return false;
-                    double distInMeters = calculateDistance(
-                            latitude, longitude,
-                            v.getLocation().getLatitude(),
-                            v.getLocation().getLongitude()
-                    );
-                    return distInMeters <= distance;
-                })
-                .toList();
+        return venueRepository.findNearby(latitude, longitude, distance);
     }
 
     /**
@@ -256,20 +247,6 @@ public class VenueService {
      */
     public List<Venue> getVerifiedVenues() {
         return venueRepository.findAll(VenueSpecifications.isVerified(true));
-    }
-
-    /**
-     * Haversine formula to calculate distance between two coordinates
-     */
-    private double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2) {
-        final int R = 6371000; // Radius of the earth in meters
-        Double latDistance = Math.toRadians(lat2 - lat1);
-        Double lonDistance = Math.toRadians(lon2 - lon1);
-        Double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
-        Double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c; // Distance in meters
     }
 
     private Map<DayOfWeek, Venue.OperatingHours> parseOperatingHours(Map<String, Venue.OperatingHours> rawMap) {

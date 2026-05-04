@@ -1,167 +1,78 @@
-# 📊 Project Summary - Football Connect Platform
+# 📊 Project Summary - Football Connect Platform (FC-Vmap)
 
-**Version**: 2.0.0  
-**Last Updated**: December 3, 2025  
-**Status**: ✅ Architecture Complete - Ready for Development
+**Version**: 2.1.0
+**Last Updated**: May 4, 2026
+**Status**: ✅ Core Functional — Backend + Frontend Web chạy được, đang hoàn thiện
 
 ---
 
 ## 🎯 Project Overview
 
-Nền tảng kết nối cầu thủ bóng đá và đặt sân thông minh với kiến trúc **Enterprise-grade** sử dụng **Java Spring Boot Backend** + **React Native Mobile Frontend**.
+Nền tảng kết nối cầu thủ bóng đá, hỗ trợ ghép đội và đặt sân thông minh.
+Kiến trúc fullstack: **Java Spring Boot Backend** + **React Web Frontend**.
 
 ---
 
 ## ✅ Đã Hoàn Thành
 
 ### 🏗️ Architecture & Infrastructure
-- [x] Clean Architecture với separation of concerns
-- [x] Multi-layer architecture (Entity → Repository → Service → Controller)
-- [x] Professional project structure
-- [x] Environment configuration (development, production)
-- [x] Git repository với .gitignore proper
+- [x] Clean Architecture: Entity → Repository → Service → Controller
+- [x] Specification Pattern cho lọc venue đa điều kiện
+- [x] Factory/Strategy Pattern cho xử lý thanh toán
+- [x] Global Exception Handler chuẩn hóa response lỗi
+- [x] SpringDoc OpenAPI (Swagger UI) cho tài liệu API
+- [x] Environment configuration qua properties + env vars
+- [x] Git repository với .gitignore
 
-### 💾 Backend (Java Spring Boot 3.2.0)
-- [x] **Domain Models (8 Entities)**:
-  - User, Team, Venue, Booking, Match, Matchmaking, Review, Report
-  - MongoDB annotations & indexing
-  - GeoSpatial support cho location-based features
-  - Lombok để reduce boilerplate code
+### 💾 Backend (Java 25 + Spring Boot 4.0.0)
+- [x] **8 JPA Entities**: User, Team, Venue, Booking, Match, Matchmaking, Review, Report
+- [x] **8 Repositories**: Spring Data JPA với custom queries
+- [x] **8 Services**: Business logic đầy đủ CRUD
+- [x] **9 Controllers**: Auth, Team, Venue, Booking, Match, Matchmaking, Review, Report, Chatbot
+- [x] **Security Layer**: JWT + Spring Security + RBAC (USER, VENUE_OWNER, ADMIN)
+- [x] **DTO Layer**: Response DTOs cho tất cả entity, DtoMapper tập trung
+- [x] **Database**: MySQL + 18 bảng với FK constraints, indexes
+- [x] **Payment**: Factory/Strategy pattern (COD, Bank Transfer)
+- [x] **Chatbot**: Skeleton rule-based cho tư vấn sân
 
-- [x] **Data Access Layer (8 Repositories)**:
-  - MongoRepository interfaces
-  - Custom query methods
-  - Pagination support
-  - Geospatial queries
-
-- [x] **Security Layer**:
-  - JWT Token Provider
-  - Authentication Filter
-  - Security Configuration
-  - Role-based access control (USER, VENUE_OWNER, ADMIN)
-  - Password encryption (BCrypt)
-
-- [x] **Configuration**:
-  - Application properties
-  - CORS configuration
-  - SpringDoc OpenAPI (Swagger)
-  - Maven dependencies (pom.xml)
-
-### 📱 Frontend (React Native + Expo)
-- [x] **Navigation Structure**:
-  - Stack Navigator
-  - Bottom Tab Navigator
-  - 10+ screen components
-
-- [x] **State Management (Redux Toolkit)**:
-  - 4 Redux slices: auth, team, venue, booking
-  - Async thunks cho API calls
-  - AsyncStorage integration
-
-- [x] **Services Layer**:
-  - Axios API client
-  - Request/Response interceptors
-  - JWT auto-attachment
-  - Organized API endpoints
-
-- [x] **UI Components**:
-  - React Native Paper theme
-  - Custom color palette
-  - Login/Register screens
-  - Home screen với navigation
+### 📱 Frontend (React 18 + Vite 5)
+- [x] **9 Screen modules**: Auth, Home, Venues, Bookings, Teams, Matches, Reviews, Reports, Profile
+- [x] **7 Redux slices**: auth, venue, booking, team, match, review, report
+- [x] **10 Service files**: API client + service cho từng domain
+- [x] **Navigation**: React Router DOM + protected routes (AccessRoute)
+- [x] **Role-based UI**: Navigation, permissions, hero content thay đổi theo role
+- [x] **Styling**: TailwindCSS + Framer Motion animations
+- [x] **Error handling**: Toast notification + Axios interceptor
 
 ### 📚 Documentation
-- [x] README.md - Full documentation
-- [x] DEVELOPMENT.md - Developer guide
-- [x] QUICKSTART.md - Quick setup guide
-- [x] .env.example - Environment template
+- [x] README.md — Full documentation
+- [x] DEVELOPMENT.md — Developer guide
+- [x] QUICKSTART.md — Quick setup guide
+- [x] SCHEMA-PERMISSIONS-DATA-RELATIONSHIPS.md — Chi tiết schema, permissions, relationships
+- [x] .env.example — Environment template
 
 ---
 
-## 🚧 Cần Implement
+## 🚧 Cần Hoàn Thiện
 
 ### Backend
-- [ ] **Controllers** (REST API Endpoints):
-  - [ ] AuthController
-  - [ ] UserController
-  - [ ] TeamController
-  - [ ] VenueController
-  - [ ] BookingController
-  - [ ] MatchmakingController
-  - [ ] MatchController
-  - [ ] ReviewController
-  - [ ] ReportController
-  - [ ] AdminController
-
-- [ ] **Services** (Business Logic):
-  - [ ] UserService
-  - [ ] TeamService & Ranking Algorithm
-  - [ ] VenueService & Search Algorithm
-  - [ ] BookingService & Conflict Detection
-  - [ ] MatchmakingService
-  - [ ] PaymentService (Stripe integration)
-  - [ ] AIService (OpenAI GPT-4)
-  - [ ] EmailService
-  - [ ] QRCodeService
-
-- [ ] **DTOs** (Data Transfer Objects):
-  - [ ] Request DTOs
-  - [ ] Response DTOs
-  - [ ] MapStruct mappers
-
-- [ ] **WebSocket** (Real-time features):
-  - [ ] Venue booking updates
-  - [ ] Team notifications
-  - [ ] Match invitations
-
-- [ ] **Exception Handling**:
-  - [ ] Global exception handler
-  - [ ] Custom exceptions
-  - [ ] Error response format
-
-- [ ] **Validation**:
-  - [ ] Input validation annotations
-  - [ ] Custom validators
-
-- [ ] **Testing**:
-  - [ ] Unit tests
-  - [ ] Integration tests
-  - [ ] Test coverage > 80%
+- [ ] Pagination cho các endpoint list
+- [ ] WebSocket real-time notifications
+- [ ] Stripe payment integration thật
+- [ ] AI Chatbot nâng cao (hiện tại chỉ rule-based skeleton)
+- [ ] Email service
+- [ ] QR Code generation service
+- [ ] Integration tests
+- [ ] Test coverage > 80%
 
 ### Frontend
-- [ ] **Screens Implementation**:
-  - [x] Login Screen (Basic)
-  - [ ] Register Screen (Complete)
-  - [ ] Home Dashboard
-  - [ ] Venue Map Screen (Google Maps integration)
-  - [ ] Venue Detail & Booking
-  - [ ] Team List & Search
-  - [ ] Team Detail & Roster
-  - [ ] Matchmaking Screen
-  - [ ] Booking Management
-  - [ ] Profile Screen
-  - [ ] Settings Screen
-
-- [ ] **Features**:
-  - [ ] Location permissions & tracking
-  - [ ] Image picker & upload
-  - [ ] QR Code scanner
-  - [ ] Push notifications
-  - [ ] Real-time updates (Socket.IO)
-  - [ ] Payment flow (Stripe)
-  - [ ] AI Chatbot interface
-
-- [ ] **UI/UX**:
-  - [ ] Loading states
-  - [ ] Error handling
-  - [ ] Form validations
-  - [ ] Animations
-  - [ ] Offline support
-
-- [ ] **Testing**:
-  - [ ] Component tests
-  - [ ] Integration tests
-  - [ ] E2E tests
+- [ ] Google Maps integration cho venue search
+- [ ] Image upload
+- [ ] Push notifications
+- [ ] Real-time updates (WebSocket)
+- [ ] Payment flow hoàn chỉnh
+- [ ] Offline support
+- [ ] Component tests & E2E tests
 
 ---
 
@@ -169,19 +80,20 @@ Nền tảng kết nối cầu thủ bóng đá và đặt sân thông minh vớ
 
 | Feature | Backend | Frontend | Status |
 |---------|---------|----------|--------|
-| Authentication (JWT) | ✅ | ✅ | Architecture Ready |
-| User Management | ✅ | 🚧 | Models Ready |
-| Team System | ✅ | 🚧 | Models Ready |
-| Ranking & Tiers | ✅ | ❌ | Algorithm TBD |
-| Venue Search | ✅ | ❌ | GeoSpatial Ready |
-| Booking System | ✅ | 🚧 | Models Ready |
-| Matchmaking | ✅ | ❌ | Models Ready |
+| Authentication (JWT) | ✅ | ✅ | ✅ Functional |
+| User Management | ✅ | ✅ | ✅ Functional |
+| Team System | ✅ | ✅ | ✅ Functional |
+| Venue Search & Filter | ✅ | ✅ | ✅ Functional |
+| Booking System | ✅ | ✅ | ✅ Functional |
+| Matchmaking | ✅ | 🚧 | API Ready |
+| Reviews | ✅ | ✅ | ✅ Functional |
+| Reports | ✅ | ✅ | ✅ Functional |
+| Match Management | ✅ | ✅ | ✅ Functional (Admin) |
+| Payment (COD/Bank) | ✅ | ✅ | ✅ Basic |
 | Payment (Stripe) | ❌ | ❌ | Not Started |
-| AI Chatbot | ❌ | ❌ | Not Started |
-| Reviews | ✅ | ❌ | Models Ready |
-| Reports | ✅ | ❌ | Models Ready |
+| AI Chatbot | 🚧 | ❌ | Skeleton |
 | WebSocket | ❌ | ❌ | Not Started |
-| QR Check-in | ❌ | ❌ | Not Started |
+| QR Check-in | 🚧 | ❌ | API Ready |
 
 **Legend**: ✅ Complete | 🚧 In Progress | ❌ Not Started
 
@@ -191,176 +103,123 @@ Nền tảng kết nối cầu thủ bóng đá và đặt sân thông minh vớ
 
 ### Code Structure
 ```
-Backend:
-- Entities: 8
-- Repositories: 8
-- Services: 0 (to implement)
-- Controllers: 0 (to implement)
-- Total Java Files: 19
+Backend (backend-java/):
+  Entities:      8
+  Repositories:  8
+  Services:      8 + Payment package (4 files)
+  Controllers:   9
+  DTOs:          9 Response + 4 Request + DtoMapper
+  Security:      4 files
+  Exception:     7 files
+  Config:        OpenAPI config
+  Total Java:    ~55 files
 
-Frontend:
-- Screens: 10
-- Redux Slices: 4
-- Components: 10+
-- Total JS Files: 20+
+Frontend (frontend-web/):
+  Screens:       9 modules
+  Redux Slices:  7
+  Services:      10
+  Navigation:    3 files (Router, AccessRoute, roleAccess)
+  Total JS/JSX:  ~30 files
 ```
 
-### Dependencies
-- **Backend**: 25+ Maven dependencies
-- **Frontend**: 30+ npm packages
+### Database
+- **18 bảng** với FK constraints
+- Indexes trên email, role
+- Seed data cho admin account
 
 ---
 
-## 🛠️ Tech Stack Summary
+## 🛠️ Tech Stack
 
 ### Backend
 | Category | Technology |
 |----------|------------|
-| Language | Java 17 |
-| Framework | Spring Boot 3.2.0 |
-| Database | MongoDB 6.0+ |
-| Security | Spring Security + JWT |
-| Payment | Stripe Java SDK |
-| AI | OpenAI GPT-4 |
-| Storage | Cloudinary |
-| Documentation | SpringDoc OpenAPI |
+| Language | Java 25 |
+| Framework | Spring Boot 4.0.0 |
+| Database | MySQL |
+| ORM | Spring Data JPA + Hibernate |
+| Security | Spring Security + JWT (jjwt 0.12.3) |
+| Validation | Spring Validation |
+| Documentation | SpringDoc OpenAPI 3.0.0 |
 | Build | Maven |
+| Code Generation | Lombok 1.18.42 |
 
 ### Frontend
 | Category | Technology |
 |----------|------------|
-| Language | JavaScript |
-| Framework | React Native + Expo |
-| State | Redux Toolkit |
-| Navigation | React Navigation |
-| UI | React Native Paper |
-| Maps | React Native Maps |
-| HTTP | Axios |
-| Storage | AsyncStorage |
-
----
-
-## 📁 File Structure Overview
-
-```
-football-connect/
-├── backend-java/
-│   ├── src/main/java/com/footballconnect/
-│   │   ├── domain/
-│   │   │   ├── entity/          ✅ 8 files
-│   │   │   └── repository/      ✅ 8 files
-│   │   ├── security/            ✅ 3 files
-│   │   └── FootballConnectApplication.java ✅
-│   ├── src/main/resources/
-│   │   └── application.properties ✅
-│   └── pom.xml                  ✅
-│
-├── frontend-mobile/
-│   ├── src/
-│   │   ├── screens/             ✅ 10+ files
-│   │   ├── redux/               ✅ 5 files
-│   │   ├── services/            ✅ 1 file
-│   │   ├── navigation/          ✅ 1 file
-│   │   └── theme/               ✅ 1 file
-│   ├── App.js                   ✅
-│   ├── app.json                 ✅
-│   └── package.json             ✅
-│
-├── .env.example                 ✅
-├── .gitignore                   ✅
-├── README.md                    ✅
-├── DEVELOPMENT.md               ✅
-└── QUICKSTART.md                ✅
-```
-
----
-
-## 🎯 Development Roadmap
-
-### Phase 1: Core API (2-3 weeks)
-- [ ] Implement all Controllers
-- [ ] Implement all Services
-- [ ] DTOs & Validation
-- [ ] Exception handling
-- [ ] Unit tests
-
-### Phase 2: Frontend Core (2-3 weeks)
-- [ ] Complete all screens
-- [ ] API integration
-- [ ] State management
-- [ ] Navigation flow
-- [ ] UI/UX polish
-
-### Phase 3: Advanced Features (2-3 weeks)
-- [ ] Payment integration
-- [ ] WebSocket real-time
-- [ ] AI Chatbot
-- [ ] Push notifications
-- [ ] QR Code system
-
-### Phase 4: Testing & Polish (1-2 weeks)
-- [ ] Integration tests
-- [ ] E2E tests
-- [ ] Performance optimization
-- [ ] Security audit
-- [ ] Bug fixes
-
-### Phase 5: Deployment (1 week)
-- [ ] Docker setup
-- [ ] CI/CD pipeline
-- [ ] Production config
-- [ ] Monitoring setup
-- [ ] Launch
+| Language | JavaScript (ES Modules) |
+| Framework | React 18 |
+| Build Tool | Vite 5 |
+| State Management | Redux Toolkit + React Redux |
+| Routing | React Router DOM 6 |
+| HTTP Client | Axios |
+| Styling | TailwindCSS 3 |
+| Animations | Framer Motion 11 |
+| Notifications | React Hot Toast |
 
 ---
 
 ## 📈 Estimated Completion
 
 - **Architecture & Setup**: ✅ 100%
-- **Backend Development**: 🔵 30% (Models & Security done)
-- **Frontend Development**: 🔵 25% (Structure & Navigation done)
-- **Integration**: ⚪ 0%
-- **Testing**: ⚪ 0%
+- **Backend Development**: 🟢 85% (Core CRUD done, thiếu pagination/WebSocket/Stripe)
+- **Frontend Development**: 🟡 60% (Core screens done, thiếu maps/upload/realtime)
+- **DTO & API Quality**: 🟢 80%
+- **Testing**: 🔵 20% (Unit tests cho service layer)
 - **Deployment**: ⚪ 0%
 
-**Overall Progress**: 🔵 **~20%**
+**Overall Progress**: 🟡 **~65%**
 
 ---
 
-## 👥 Team Recommendations
+## 📁 File Structure
 
-### Backend Team (2-3 developers)
-- Senior Java Developer (Lead)
-- Java Developer (Services & Controllers)
-- DevOps Engineer (part-time)
-
-### Frontend Team (2-3 developers)
-- Senior React Native Developer (Lead)
-- React Native Developer (UI/UX)
-- Mobile QA Engineer
-
-### Suggested Timeline
-- **MVP**: 2-3 months
-- **Full Release**: 4-5 months
+```
+FC-Vmap/
+├── backend-java/
+│   ├── src/main/java/com/footballconnect/
+│   │   ├── config/                    # OpenAPI config
+│   │   ├── controller/                # 9 REST controllers
+│   │   ├── domain/
+│   │   │   ├── entity/                # 8 JPA entities
+│   │   │   ├── repository/            # 8 JPA repositories
+│   │   │   └── specification/         # Venue specifications
+│   │   ├── dto/                       # Request/Response DTOs + DtoMapper
+│   │   ├── exception/                 # Global exception handler + custom exceptions
+│   │   ├── security/                  # JWT + Spring Security config
+│   │   └── service/                   # 8 services + payment package
+│   ├── src/main/resources/
+│   │   └── application.properties
+│   ├── src/test/java/                 # Unit tests
+│   ├── database/
+│   │   ├── schema.sql                 # DDL + seed data
+│   │   └── database.sql               # Full DB dump
+│   └── pom.xml
+├── frontend-web/
+│   ├── src/
+│   │   ├── screens/                   # 9 screen modules
+│   │   ├── redux/slices/              # 7 Redux slices
+│   │   ├── services/                  # 10 API service files
+│   │   ├── navigation/                # Router + AccessRoute + roleAccess
+│   │   └── theme/
+│   ├── index.html
+│   ├── vite.config.js
+│   ├── tailwind.config.js
+│   └── package.json
+├── README.md
+├── PROJECT-SUMMARY.md
+├── DEVELOPMENT.md
+├── QUICKSTART.md
+├── SCHEMA-PERMISSIONS-DATA-RELATIONSHIPS.md
+└── .env.example
+```
 
 ---
 
 ## 🔗 Quick Links
 
-- 📖 [README.md](README.md) - Full documentation
-- 🛠️ [DEVELOPMENT.md](DEVELOPMENT.md) - Developer guide
-- 🚀 [QUICKSTART.md](QUICKSTART.md) - Quick setup
-- 📝 [.env.example](.env.example) - Environment config
-
----
-
-## 📞 Contact & Support
-
-- **Repository**: [GitHub](https://github.com/your-repo)
-- **Documentation**: [Wiki](https://github.com/your-repo/wiki)
-- **Issues**: [GitHub Issues](https://github.com/your-repo/issues)
-- **Email**: support@footballconnect.com
-
----
-
-**Note**: Đây là foundation chuyên nghiệp, sẵn sàng cho development team bắt tay vào implement business logic và UI! 🚀⚽
+- 📖 [README.md](README.md) — Full documentation
+- 🛠️ [DEVELOPMENT.md](DEVELOPMENT.md) — Developer guide
+- 🚀 [QUICKSTART.md](QUICKSTART.md) — Quick setup
+- 🗄️ [SCHEMA-PERMISSIONS-DATA-RELATIONSHIPS.md](SCHEMA-PERMISSIONS-DATA-RELATIONSHIPS.md) — DB schema & permissions
+- 📝 [.env.example](.env.example) — Environment config

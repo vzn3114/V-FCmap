@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.footballconnect.domain.entity.Report;
+import com.footballconnect.dto.DtoMapper;
+import com.footballconnect.dto.ReportResponse;
 import com.footballconnect.service.ReportService;
 
 import jakarta.validation.Valid;
@@ -35,20 +37,20 @@ public class ReportController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Report>> getReports(@RequestParam(required = false) String status,
+    public ResponseEntity<List<ReportResponse>> getReports(@RequestParam(required = false) String status,
                                                    @RequestParam(required = false, defaultValue = "false") Boolean onlyMine) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return ResponseEntity.ok(reportService.getReports(email, status, onlyMine));
+        return ResponseEntity.ok(DtoMapper.toReportResponseList(reportService.getReports(email, status, onlyMine)));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Report> getReportById(@PathVariable Long id) {
+    public ResponseEntity<ReportResponse> getReportById(@PathVariable Long id) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return ResponseEntity.ok(reportService.getReportById(id, email));
+        return ResponseEntity.ok(DtoMapper.toReportResponse(reportService.getReportById(id, email)));
     }
 
     @PostMapping
-    public ResponseEntity<Report> createReport(@Valid @RequestBody CreateReportRequest request) {
+    public ResponseEntity<ReportResponse> createReport(@Valid @RequestBody CreateReportRequest request) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Report report = reportService.createReport(
                 email,
@@ -60,11 +62,11 @@ public class ReportController {
                 request.getDescription(),
                 request.getEvidence()
         );
-        return ResponseEntity.ok(report);
+        return ResponseEntity.ok(DtoMapper.toReportResponse(report));
     }
 
     @PutMapping("/{id}/review")
-    public ResponseEntity<Report> reviewReport(@PathVariable Long id,
+    public ResponseEntity<ReportResponse> reviewReport(@PathVariable Long id,
                                                @Valid @RequestBody ReviewReportRequest request) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Report report = reportService.reviewReport(
@@ -74,7 +76,7 @@ public class ReportController {
                 request.getReviewNotes(),
                 request.getAction()
         );
-        return ResponseEntity.ok(report);
+        return ResponseEntity.ok(DtoMapper.toReportResponse(report));
     }
 
     @DeleteMapping("/{id}")
