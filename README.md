@@ -133,6 +133,7 @@ Bạn có thể ghi đè bằng biến môi trường:
 ```bash
 cd backend-java
 mvn spring-boot:run
+.\mvnw spring-boot:run
 ```
 
 Log mong đợi:

@@ -4,494 +4,518 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 
-import { createVenue, fetchVenues, updateVenue } from "../../redux/slices/venueSlice";
+import { createVenue, fetchVenues, updateVenue, fetchNearbyVenues } from "../../redux/slices/venueSlice";
 import { setSelectedVenueId } from "../../redux/slices/bookingSlice";
 import { canManageVenues, getRoleLabel } from "../../navigation/roleAccess";
+import FilterSidebar from "./FilterSidebar";
 
-const surfaceOptions = [
-  { label: "Tất cả mặt sân", value: "" },
-  { label: "Cỏ nhân tạo", value: "artificial" },
-  { label: "Cỏ tự nhiên", value: "natural" },
-  { label: "Khác", value: "other" },
-];
-
-const sortOptions = [
-  { label: "Tên A-Z", value: "name-asc" },
-  { label: "Quận/Huyện A-Z", value: "district-asc" },
-  { label: "Đánh giá cao nhất", value: "rating-desc" },
-  { label: "Mới nhất", value: "newest-desc" },
-];
-
-function normalizeText(value) {
-  return String(value || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
+/* ─── helpers ─── */
+function normalize(v) {
+  return String(v || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 }
-
-function getVenueLocation(venue) {
+function getLocation(v) {
   return {
-    district: venue.location?.district || venue.district || "Chưa rõ",
-    city: venue.location?.city || venue.city || "Hồ Chí Minh",
-    address: venue.location?.address || venue.address || "Chưa có địa chỉ chi tiết",
+    district: v.location?.district || v.district || "Chưa rõ",
+    city: v.location?.city || v.city || "Hồ Chí Minh",
+    address: v.location?.address || v.address || "Chưa có địa chỉ",
   };
 }
+function getSurface(v) {
+  const hay = normalize([v.name, v.description, v.location?.address].filter(Boolean).join(" "));
+  if (hay.includes("natural grass") || hay.includes("co tu nhien")) return "natural";
+  if (hay.includes("co nhan tao") || hay.includes("artificial") || hay.includes("mini")) return "artificial";
+  return v.fields?.some((f) => String(f?.surfaceType || "").toUpperCase() === "ARTIFICIAL_GRASS") ? "artificial" : "other";
+}
+function surfaceLabel(s) {
+  return s === "artificial" ? "Cỏ nhân tạo" : s === "natural" ? "Cỏ tự nhiên" : "Khác";
+}
+function surfaceColor(s) {
+  return s === "artificial"
+    ? { bg: "#dcfce7", color: "#15803d" }
+    : s === "natural"
+    ? { bg: "#fef3c7", color: "#92400e" }
+    : { bg: "#f3f4f6", color: "#6b7280" };
+}
+function getRating(v) { return Number.isFinite(v.averageRating) ? v.averageRating.toFixed(1) : null; }
+function getPriceText(v) {
+  const p = v.pricing?.normalTime;
+  return typeof p === "number" && p > 0 ? `${p.toLocaleString("vi-VN")}đ/h` : "Liên hệ";
+}
+function formFromVenue(v) {
+  return {
+    name: v?.name || "", description: v?.description || "",
+    district: v?.location?.district || v?.district || "",
+    city: v?.location?.city || v?.city || "",
+    address: v?.location?.address || v?.address || "",
+    latitude: v?.location?.latitude ?? "", longitude: v?.location?.longitude ?? "",
+    normalPrice: v?.pricing?.normalTime ?? "", weekendPrice: v?.pricing?.weekendRate ?? "",
+    primePrice: v?.pricing?.primeTime ?? "", imageUrl: v?.images?.[0]?.url || "",
+    videoUrl: v?.videos?.[0]?.url || "", popularTimesText: "",
+    qrCodeUrl: v?.qrCodeUrl || "",
+  };
+}
+const EMPTY_FORM = {
+  name: "", description: "", district: "", city: "", address: "",
+  latitude: "", longitude: "", normalPrice: "", weekendPrice: "",
+  primePrice: "", imageUrl: "", videoUrl: "", popularTimesText: "", qrCodeUrl: "",
+};
+const INIT_FILTERS = {
+  search: "", minPrice: 0, maxPrice: 1000000,
+  fieldSizes: [], amenities: [], surfaceFilter: "", districtFilter: "",
+};
 
-function getVenueSurface(venue) {
-  const haystack = normalizeText(
-    [venue.name, venue.description, venue.location?.address, venue.address].filter(Boolean).join(" ")
+/* ─── Stars ─── */
+function Stars({ value }) {
+  const n = Math.round(parseFloat(value) || 0);
+  return (
+    <span className="flex gap-0.5">
+      {[1,2,3,4,5].map((i) => (
+        <svg key={i} width="11" height="11" viewBox="0 0 24 24"
+          fill={i <= n ? "#f59e0b" : "none"} stroke={i <= n ? "#f59e0b" : "#d1d5db"} strokeWidth="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+        </svg>
+      ))}
+    </span>
   );
-
-  if (haystack.includes("pickleball") || haystack.includes("golf")) {
-    return "other";
-  }
-
-  if (haystack.includes("co tu nhien") || haystack.includes("coo tu nhien") || haystack.includes("natural grass")) {
-    return "natural";
-  }
-
-  if (haystack.includes("co nhan tao") || haystack.includes("artificial grass") || haystack.includes("mini")) {
-    return "artificial";
-  }
-
-  return venue.fields?.some((field) => String(field?.surfaceType || "").toUpperCase() === "ARTIFICIAL_GRASS")
-    ? "artificial"
-    : "other";
 }
 
-function getSurfaceLabel(surface) {
-  switch (surface) {
-    case "artificial":
-      return "Cỏ nhân tạo";
-    case "natural":
-      return "Cỏ tự nhiên";
-    default:
-      return "Khác";
-  }
+/* ─── VenueCard ─── */
+/* ─── Image helpers ─── */
+// Reliable fallback — works without auth
+const FALLBACK_IMG = "https://images.unsplash.com/photo-1575361204480-aadea25e6e68?w=600&auto=format&fit=crop&q=60";
+
+// source.unsplash.com is deprecated (redirects then 404).
+// Convert to direct images.unsplash.com format silently.
+function getVenueImg(venue) {
+  const raw = venue.images?.[0]?.url;
+  if (!raw) return FALLBACK_IMG;
+  // Replace old source.unsplash.com (deprecated) with images.unsplash.com
+  if (raw.includes("source.unsplash.com")) return FALLBACK_IMG;
+  // Replace any remaining broken cloudinary placeholder URLs
+  if (raw.includes("res.cloudinary.com/default")) return FALLBACK_IMG;
+  return raw;
 }
 
-function getVenueRating(venue) {
-  return Number.isFinite(venue.averageRating) ? venue.averageRating.toFixed(1) : "-";
-}
-
-function getVenuePriceText(venue) {
+const VenueCard = memo(function VenueCard({ venue, onEdit, onSelect, viewMode }) {
+  const loc = getLocation(venue);
+  const surf = getSurface(venue);
+  const { bg, color } = surfaceColor(surf);
+  const img = getVenueImg(venue);
+  const rating = getRating(venue);
+  const priceText = getPriceText(venue);
+  const isVerified = venue.is_verified ?? venue.isVerified;
   const price = venue.pricing?.normalTime;
-  if (typeof price === "number" && Number.isFinite(price) && price > 0) {
-    return `${price.toLocaleString()} VNĐ`;
+
+  if (viewMode === "list") {
+    return (
+      <motion.article
+        className="fc-card flex gap-4 overflow-hidden p-0"
+        initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }} transition={{ duration: 0.25 }}
+      >
+        <div className="relative flex-shrink-0 w-44 h-36 overflow-hidden bg-gray-200">
+          <img src={img} alt={venue.name}
+            className="w-full h-full object-cover"
+            onError={(e) => { e.target.onerror = null; e.target.src = FALLBACK_IMG; }}
+          />
+          {isVerified && (
+            <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-semibold"
+              style={{ background: "rgba(16,185,129,0.9)", color: "#fff" }}>✓ Xác minh</div>
+          )}
+        </div>
+        <div className="flex-1 py-3 pr-4 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="font-bold text-gray-900 text-[15px] line-clamp-1" style={{ fontFamily: "Sora,sans-serif" }}>{venue.name}</h3>
+            {rating && (
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth="2">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+                <span className="text-sm font-bold text-gray-700">{rating}</span>
+                <span className="text-xs text-gray-400">({venue.totalReviews || 0})</span>
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+            </svg>
+            {loc.district}, {loc.city}
+          </p>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ bg, color, background: bg }}>{surfaceLabel(surf)}</span>
+          </div>
+          <div className="flex items-center justify-between mt-3">
+            <span className="font-bold text-emerald-600">{priceText}</span>
+            <div className="flex gap-2">
+              {onEdit && <button type="button" onClick={() => onEdit(venue)} className="btn-secondary text-xs h-7 px-2.5 min-w-0">Sửa</button>}
+              <button type="button" onClick={() => onSelect(venue.id)} className="btn-primary text-xs h-7 px-3 min-w-0">Đặt sân</button>
+            </div>
+          </div>
+        </div>
+      </motion.article>
+    );
   }
-  return "Liên hệ";
-}
-
-function getVenueFormFromVenue(venue) {
-  return {
-    name: venue?.name || "",
-    description: venue?.description || "",
-    district: venue?.location?.district || venue?.district || "",
-    city: venue?.location?.city || venue?.city || "",
-    address: venue?.location?.address || venue?.address || "",
-    latitude: venue?.location?.latitude ?? "",
-    longitude: venue?.location?.longitude ?? "",
-    normalPrice: venue?.pricing?.normalTime ?? "",
-    weekendPrice: venue?.pricing?.weekendRate ?? "",
-    primePrice: venue?.pricing?.primeTime ?? "",
-    imageUrl: venue?.images?.[0]?.url || "",
-    videoUrl: venue?.videos?.[0]?.url || "",
-    popularTimesText: Array.isArray(venue?.popularTimes) ? venue.popularTimes.join(", ") : "",
-    qrCodeUrl: venue?.qrCodeUrl || "",
-  };
-}
-
-const VenueCard = memo(function VenueCard({ venue, onEdit, onSelect }) {
-  const location = getVenueLocation(venue);
-  const surface = getVenueSurface(venue);
-  const imageUrl = venue.images?.[0]?.url || "https://images.unsplash.com/photo-1518604666860-9ed391f76460?q=80&w=1200&auto=format&fit=crop";
 
   return (
     <motion.article
-      className="glass-panel overflow-hidden p-3 transition hover:-translate-y-1"
-      initial={{ opacity: 0, y: 22 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.2 }}
-      transition={{ duration: 0.3 }}
+      className="fc-card overflow-hidden group"
+      initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.12 }} transition={{ duration: 0.28 }}
     >
-      <div
-        className="h-44 rounded-xl bg-cover bg-center"
-        style={{
-          backgroundImage: `url(${imageUrl})`,
-        }}
-      />
-      <div className="mt-3 space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${surface === "artificial" ? "bg-[#defde2] text-[#1f712d]" : surface === "natural" ? "bg-[#f6ebd7] text-[#8a5a14]" : "bg-[#e8edf1] text-[#51606c]"}`}>
-            {getSurfaceLabel(surface)}
-          </span>
-          {venue.is_verified ?? venue.isVerified ? (
-            <span className="rounded-full bg-[#e4f5ff] px-3 py-1 text-xs font-semibold text-[#1d6b99]">Da xac minh</span>
-          ) : null}
+      <div className="relative h-48 overflow-hidden bg-gray-200">
+        <img src={img} alt={venue.name}
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          onError={(e) => { e.target.onerror = null; e.target.src = FALLBACK_IMG; }}
+        />
+        <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg text-sm font-bold text-white"
+          style={{ background: "rgba(16,185,129,0.92)", backdropFilter: "blur(4px)" }}>
+          {priceText}
         </div>
-        <h3 className="title-lg line-clamp-2">{venue.name}</h3>
-        <p className="muted line-clamp-2">{venue.description || location.address}</p>
-        <div className="space-y-1 text-sm">
-          <p className="text-[#5f6f65]">{location.district}, {location.city}</p>
-          <p className="line-clamp-2 text-[#6b7570]">{location.address}</p>
+        {isVerified && (
+          <div className="absolute top-3 left-3 px-2 py-1 rounded-lg text-xs font-semibold"
+            style={{ background: "rgba(255,255,255,0.95)", color: "#10b981" }}>✓ Xác minh</div>
+        )}
+        {venue.status === "ACTIVE" && (
+          <div className="absolute bottom-3 left-3 px-2 py-0.5 rounded-full text-xs font-semibold"
+            style={{ background: "#10b981", color: "#fff" }}>Còn trống</div>
+        )}
+      </div>
+      <div className="p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: bg, color }}>{surfaceLabel(surf)}</span>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="rounded-full border border-[#d2c5e8] bg-white/80 px-3 py-1 text-xs text-[#5c6b61]">Đánh giá {getVenueRating(venue)}</span>
-          <span className="text-sm font-semibold text-[#2f8f39]">{getVenuePriceText(venue)}</span>
+        <h3 className="font-bold text-gray-900 text-[15px] line-clamp-1 mb-1" style={{ fontFamily: "Sora,sans-serif" }}>{venue.name}</h3>
+        <p className="text-sm text-gray-500 flex items-center gap-1 mb-2">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+          {loc.district}, {loc.city}
+        </p>
+        <div className="flex items-center gap-2 mb-3">
+          {rating ? (
+            <>
+              <Stars value={rating} />
+              <span className="text-xs font-semibold text-gray-600">{rating}</span>
+              <span className="text-xs text-gray-400">({venue.totalReviews || 0})</span>
+            </>
+          ) : <span className="text-xs text-gray-400">Chưa có đánh giá</span>}
+          {venue.totalBookings > 0 && <span className="text-xs text-gray-400 ml-auto">{venue.totalBookings} lượt</span>}
         </div>
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-xs text-[#6b7570]">{venue.totalReviews || 0} đánh giá · {venue.totalBookings || 0} lượt đặt</span>
-          <div className="flex gap-2">
-            {onEdit ? (
-              <button className="btn-secondary h-10 min-w-32" onClick={() => onEdit(venue)} type="button">
-                Chỉnh sửa
-              </button>
-            ) : null}
-            <button className="btn-primary h-10 min-w-32" onClick={() => onSelect(venue.id)} type="button">Đặt sân</button>
-          </div>
+        <div className="flex gap-2">
+          {onEdit && (
+            <button type="button" id={`btn-edit-${venue.id}`} onClick={() => onEdit(venue)}
+              className="btn-secondary text-xs h-9 px-3 min-w-0 flex-1">Chỉnh sửa</button>
+          )}
+          <button type="button" id={`btn-book-${venue.id}`} onClick={() => onSelect(venue.id)}
+            className="btn-primary text-xs h-9 px-3 min-w-0 flex-1">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mr-1">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            Đặt sân
+          </button>
         </div>
       </div>
     </motion.article>
   );
 });
 
+/* ─── Venue Form ─── */
+function VenueForm({ form, setForm, editingId, onSave, creating, onCancel }) {
+  const f = (label, key, type = "text", placeholder = "") => (
+    <div>
+      <label className="label-base">{label}</label>
+      <input className="input-base" type={type} placeholder={placeholder}
+        value={form[key]} onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))} />
+    </div>
+  );
+  return (
+    <div className="fc-card p-5 mb-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="title-lg">{editingId ? `Chỉnh sửa sân #${editingId}` : "Thêm sân mới"}</h2>
+        {editingId && <button type="button" onClick={onCancel} className="btn-secondary text-xs h-8 px-3 min-w-0">Huỷ</button>}
+      </div>
+      <form onSubmit={onSave} className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="lg:col-span-2">{f("Tên sân *", "name", "text", "Sân bóng Bình Thạnh")}</div>
+        <div>{f("Địa chỉ", "address", "text", "Số nhà, đường...")}</div>
+        <div>{f("Quận/Huyện", "district")}</div>
+        <div>{f("Tỉnh/Thành", "city", "text", "Hồ Chí Minh")}</div>
+        <div>{f("Giá thường (VNĐ/h)", "normalPrice", "number", "200000")}</div>
+        <div>{f("Giá cuối tuần", "weekendPrice", "number")}</div>
+        <div>{f("Giá cao điểm", "primePrice", "number")}</div>
+        <div>{f("URL ảnh", "imageUrl", "url", "https://...")}</div>
+        <div className="md:col-span-2 lg:col-span-3">
+          <label className="label-base">Mô tả</label>
+          <textarea className="input-base min-h-[72px] pt-2.5" value={form.description}
+            onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
+        </div>
+        <div className="md:col-span-2 lg:col-span-3 flex justify-end gap-2">
+          {editingId && <button type="button" onClick={onCancel} className="btn-secondary">Huỷ</button>}
+          <button id="btn-save-venue" type="submit" disabled={creating} className="btn-primary">
+            {creating ? "Đang lưu..." : editingId ? "Cập nhật" : "Tạo sân"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+const SORT_OPTIONS = [
+  { label: "Tên A-Z", value: "name-asc" },
+  { label: "Gần nhất", value: "newest-desc" },
+  { label: "Đánh giá cao nhất", value: "rating-desc" },
+  { label: "Giá thấp nhất", value: "price-asc" },
+];
+
+/* ─── VenuesPage ─── */
 export default function VenuesPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const user = useSelector((state) => state.auth.user);
-  const { items, loading, creating, error, createError } = useSelector((state) => state.venues);
-  const canManageVenuePanels = canManageVenues(user);
-  const roleLabel = getRoleLabel(user?.role);
-  const [searchText, setSearchText] = useState("");
-  const [districtFilter, setDistrictFilter] = useState("");
-  const [cityFilter, setCityFilter] = useState("");
-  const [surfaceFilter, setSurfaceFilter] = useState("");
+  const user = useSelector((s) => s.auth.user);
+  const { items, loading, creating, error } = useSelector((s) => s.venues);
+  const canManage = canManageVenues(user);
+
+  const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("name-asc");
-  const [editingVenueId, setEditingVenueId] = useState(null);
-  const [createForm, setCreateForm] = useState({
-    name: "",
-    description: "",
-    district: "",
-    city: "",
-    address: "",
-    latitude: "",
-    longitude: "",
-    normalPrice: "",
-    weekendPrice: "",
-    primePrice: "",
-    imageUrl: "",
-    videoUrl: "",
-    popularTimesText: "",
-    qrCodeUrl: "",
-  });
+  const [viewMode, setViewMode] = useState("grid"); // "grid" | "list"
+  const [filters, setFilters] = useState(INIT_FILTERS);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [showForm, setShowForm] = useState(false);
 
-  useEffect(() => {
-    dispatch(fetchVenues({}));
-  }, [dispatch]);
+  const [nearbyMode,   setNearbyMode]   = useState(false);
+  const [nearbyVenues, setNearbyVenues] = useState([]);
+  const [nearbyLoading,setNearbyLoading]= useState(false);
 
-  const filteredVenues = useMemo(() => {
-    const search = normalizeText(searchText);
-    const normalizedDistrict = normalizeText(districtFilter);
-    const normalizedCity = normalizeText(cityFilter);
+  useEffect(() => { dispatch(fetchVenues({})); }, [dispatch]);
 
-    const next = items.filter((venue) => {
-      const location = getVenueLocation(venue);
-      const haystack = normalizeText([venue.name, venue.description, location.address, location.district, location.city].filter(Boolean).join(" "));
-      const venueSurface = getVenueSurface(venue);
+  const onFindNearby = async () => {
+    if (!navigator.geolocation) { toast.error("Trình duyệt không hỗ trợ định vị"); return; }
+    setNearbyLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const res = await dispatch(fetchNearbyVenues({ lat: latitude, lng: longitude, maxDistance: 5000 }));
+        setNearbyLoading(false);
+        if (fetchNearbyVenues.fulfilled.match(res)) {
+          setNearbyVenues(res.payload);
+          setNearbyMode(true);
+          toast.success(`🎯 Tìm thấy ${res.payload.length} sân trong bán kính 5km`);
+        } else {
+          toast.error("Không thể tìm sân gần đây");
+        }
+      },
+      () => { setNearbyLoading(false); toast.error("Không thể lấy vị trí của bạn"); },
+      { timeout: 8000 }
+    );
+  };
 
-      if (search && !haystack.includes(search)) return false;
-      if (normalizedDistrict && !normalizeText(location.district).includes(normalizedDistrict)) return false;
-      if (normalizedCity && !normalizeText(location.city).includes(normalizedCity)) return false;
-      if (surfaceFilter && venueSurface !== surfaceFilter) return false;
+  const districtOptions = useMemo(() =>
+    [...new Set(items.map((v) => getLocation(v).district).filter(Boolean))].sort((a, b) => a.localeCompare(b, "vi")),
+    [items]);
 
+  const filtered = useMemo(() => {
+    const s = normalize(search);
+    const nd = normalize(filters.districtFilter);
+
+    let list = items.filter((v) => {
+      const loc = getLocation(v);
+      const hay = normalize([v.name, v.description, loc.address, loc.district, loc.city].join(" "));
+      if (s && !hay.includes(s)) return false;
+      if (nd && !normalize(loc.district).includes(nd)) return false;
+      if (filters.surfaceFilter && getSurface(v) !== filters.surfaceFilter) return false;
+      const price = v.pricing?.normalTime;
+      if (typeof price === "number" && price > filters.maxPrice) return false;
       return true;
     });
 
-    const sorted = [...next].sort((left, right) => {
-      const leftLocation = getVenueLocation(left);
-      const rightLocation = getVenueLocation(right);
-
+    return [...list].sort((a, b) => {
       switch (sortBy) {
-        case "district-asc":
-          return leftLocation.district.localeCompare(rightLocation.district, "vi", { sensitivity: "base" }) || left.name.localeCompare(right.name, "vi", { sensitivity: "base" });
-        case "rating-desc":
-          return (right.averageRating ?? 0) - (left.averageRating ?? 0) || left.name.localeCompare(right.name, "vi", { sensitivity: "base" });
-        case "newest-desc":
-          return new Date(right.createdAt || 0) - new Date(left.createdAt || 0);
-        case "name-asc":
-        default:
-          return left.name.localeCompare(right.name, "vi", { sensitivity: "base" });
+        case "rating-desc": return (b.averageRating ?? 0) - (a.averageRating ?? 0);
+        case "price-asc": return (a.pricing?.normalTime ?? 9e9) - (b.pricing?.normalTime ?? 9e9);
+        case "newest-desc": return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+        default: return a.name.localeCompare(b.name, "vi");
       }
     });
+  }, [items, search, sortBy, filters]);
 
-    return sorted;
-  }, [cityFilter, districtFilter, items, searchText, sortBy, surfaceFilter]);
+  const onReset = () => { setSearch(""); setFilters(INIT_FILTERS); };
 
-  const total = items.length;
-  const visibleTotal = filteredVenues.length;
+  const onEditVenue = (v) => { setEditingId(String(v.id)); setForm(formFromVenue(v)); setShowForm(true); };
+  const onCancelEdit = () => { setEditingId(null); setForm(EMPTY_FORM); setShowForm(false); };
+  const onSelectVenue = (id) => { dispatch(setSelectedVenueId(id)); navigate("/bookings"); };
 
-  const districtOptions = useMemo(
-    () =>
-      [...new Set(items.map((venue) => getVenueLocation(venue).district).filter(Boolean))]
-        .sort((a, b) => a.localeCompare(b, "vi", { sensitivity: "base" })),
-    [items]
-  );
-
-  const cityOptions = useMemo(
-    () =>
-      [...new Set(items.map((venue) => getVenueLocation(venue).city).filter(Boolean))]
-        .sort((a, b) => a.localeCompare(b, "vi", { sensitivity: "base" })),
-    [items]
-  );
-
-  const onResetAll = () => {
-    setSearchText("");
-    setDistrictFilter("");
-    setCityFilter("");
-    setSurfaceFilter("");
-    setSortBy("name-asc");
-  };
-
-  const resetVenueForm = () => {
-    setEditingVenueId(null);
-    setCreateForm({
-      name: "",
-      description: "",
-      district: "",
-      city: "",
-      address: "",
-      latitude: "",
-      longitude: "",
-      normalPrice: "",
-      weekendPrice: "",
-      primePrice: "",
-      imageUrl: "",
-      videoUrl: "",
-      popularTimesText: "",
-      qrCodeUrl: "",
-    });
-  };
-
-  const onEditVenue = (venue) => {
-    setEditingVenueId(String(venue.id));
-    setCreateForm(getVenueFormFromVenue(venue));
-  };
-
-  const onSelectVenue = (venueId) => {
-    dispatch(setSelectedVenueId(venueId));
-    navigate("/bookings");
-  };
-
-  const onSaveVenue = async (e) => {
+  const onSave = async (e) => {
     e.preventDefault();
-    if (!createForm.name.trim()) {
-      toast.error("Tên sân là bắt buộc");
-      return;
-    }
-
+    if (!form.name.trim()) { toast.error("Tên sân là bắt buộc"); return; }
     const payload = {
-      name: createForm.name,
-      description: createForm.description,
+      name: form.name, description: form.description,
       location: {
-        district: createForm.district || null,
-        city: createForm.city || null,
-        address: createForm.address || null,
-        latitude: createForm.latitude === "" ? null : Number(createForm.latitude),
-        longitude: createForm.longitude === "" ? null : Number(createForm.longitude),
+        district: form.district || null, city: form.city || null, address: form.address || null,
+        latitude: form.latitude === "" ? null : Number(form.latitude),
+        longitude: form.longitude === "" ? null : Number(form.longitude),
       },
       pricing: {
-        normalTime: createForm.normalPrice === "" ? null : Number(createForm.normalPrice),
-        weekendRate: createForm.weekendPrice === "" ? null : Number(createForm.weekendPrice),
-        primeTime: createForm.primePrice === "" ? null : Number(createForm.primePrice),
+        normalTime: form.normalPrice === "" ? null : Number(form.normalPrice),
+        weekendRate: form.weekendPrice === "" ? null : Number(form.weekendPrice),
+        primeTime: form.primePrice === "" ? null : Number(form.primePrice),
       },
-      images: createForm.imageUrl ? [{ url: createForm.imageUrl, caption: "Ảnh chính" }] : [],
-      videos: createForm.videoUrl ? [{ url: createForm.videoUrl, caption: "Video" }] : [],
-      popularTimes: createForm.popularTimesText.split(",").map((x) => x.trim()).filter(Boolean),
-      qrCodeUrl: createForm.qrCodeUrl || null,
+      images: form.imageUrl ? [{ url: form.imageUrl, caption: "Ảnh chính" }] : [],
     };
-
-    const action = editingVenueId
-      ? updateVenue({ venueId: Number(editingVenueId), payload })
-      : createVenue(payload);
-
-    const result = await dispatch(action);
-    if (createVenue.fulfilled.match(result) || updateVenue.fulfilled.match(result)) {
-      toast.success(editingVenueId ? "Cập nhật sân thành công" : "Tạo sân thành công");
-      resetVenueForm();
+    const action = editingId ? updateVenue({ venueId: Number(editingId), payload }) : createVenue(payload);
+    const res = await dispatch(action);
+    if (createVenue.fulfilled.match(res) || updateVenue.fulfilled.match(res)) {
+      toast.success(editingId ? "Cập nhật thành công" : "Tạo sân thành công");
+      onCancelEdit();
     }
   };
 
   return (
-    <section className="space-y-5">
-      <div className="glass-panel p-4 sm:p-5">
-        <div className="mb-4 flex items-end justify-between gap-4">
-          <div>
-            <h1 className="title-xl">Danh sách sân bóng</h1>
-            <p className="muted">
-              {canManageVenuePanels
-                ? `${roleLabel} có thể tìm nhanh và chỉnh sửa sân ngay tại trang này.`
-                : "Phiên bản rút gọn: tìm nhanh theo từ khóa và khu vực để đặt sân nhanh hơn."}
-            </p>
-          </div>
-          <div className="text-right text-sm font-semibold text-[#2b7f34]">
-            <p>{total} sân đã tải</p>
-            <p className="text-[#5f6f65]">{visibleTotal} sân phù hợp</p>
-          </div>
-        </div>
-        {error ? <p className="mb-2 text-sm text-red-600">{error}</p> : null}
+    <section>
+      {/* Owner form */}
+      {canManage && showForm && (
+        <VenueForm form={form} setForm={setForm} editingId={editingId}
+          onSave={onSave} creating={creating} onCancel={onCancelEdit} />
+      )}
 
-        <div className="mb-4 grid gap-3 md:grid-cols-5">
-          <label className="md:col-span-2">
-            <span className="label-base">Tìm nhanh</span>
-            <input
-              className="input-base"
-              placeholder="Nhập tên sân, quận, đường, phường..."
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-            />
-          </label>
-          <label>
-            <span className="label-base">Quận/Huyện</span>
-            <select className="input-base" value={districtFilter} onChange={(e) => setDistrictFilter(e.target.value)}>
-              <option value="">Tất cả quận/huyện</option>
-              {districtOptions.map((district) => (
-                <option key={district} value={district}>{district}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span className="label-base">Tỉnh/Thành</span>
-            <select className="input-base" value={cityFilter} onChange={(e) => setCityFilter(e.target.value)}>
-              <option value="">Tất cả tỉnh/thành</option>
-              {cityOptions.map((city) => (
-                <option key={city} value={city}>{city}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span className="label-base">Sắp xếp</span>
-            <select className="input-base" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-              {sortOptions.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span className="label-base">Mặt sân</span>
-            <select className="input-base" value={surfaceFilter} onChange={(e) => setSurfaceFilter(e.target.value)}>
-              {surfaceOptions.map((option) => (
-                <option key={option.value || "all"} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-          </label>
-        </div>
+      {/* Main layout: sidebar + content */}
+      <div className="flex gap-6 items-start">
 
-        <div className="flex justify-end">
-          <button className="btn-secondary" onClick={onResetAll} type="button">Đặt lại bộ lọc</button>
+        {/* ── LEFT SIDEBAR ── */}
+        <FilterSidebar
+          filters={{ ...filters, districtOptions }}
+          onChange={setFilters}
+          onReset={onReset}
+          totalVisible={filtered.length}
+        />
+
+        {/* ── RIGHT CONTENT ── */}
+        <div className="flex-1 min-w-0">
+          {/* Topbar */}
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <h1 className="title-xl">Danh sách sân bóng</h1>
+              <p className="muted mt-0.5">Tìm thấy <span className="font-semibold text-emerald-600">{filtered.length}</span> sân bóng phù hợp</p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* 📍 Nearby button */}
+              <button type="button"
+                onClick={nearbyMode ? () => { setNearbyMode(false); setNearbyVenues([]); } : onFindNearby}
+                disabled={nearbyLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold transition"
+                style={nearbyMode
+                  ? { background:"#6366f1", color:"#fff" }
+                  : { background:"#eef2ff", color:"#4338ca" }}>
+                {nearbyLoading ? (
+                  <>
+                    <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                    </svg> Đang định vị...
+                  </>
+                ) : nearbyMode ? (
+                  "❌ Tắt gần tôi"
+                ) : (
+                  "📍 Tìm sân gần tôi"
+                )}
+              </button>
+              {canManage && !showForm && (
+                <button id="btn-add-venue" type="button"
+                  onClick={() => { setShowForm(true); setEditingId(null); setForm(EMPTY_FORM); }}
+                  className="btn-primary text-sm h-9 px-4 min-w-0">+ Thêm sân</button>
+              )}
+            </div>
+          </div>
+
+          {/* Search + Sort bar */}
+          <div className="flex gap-3 mb-5 items-center">
+            <div className="relative flex-1">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="15" height="15"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input id="venue-search" className="input-base pl-9" value={search}
+                placeholder="Tìm theo tên sân, địa chỉ..."
+                onChange={(e) => setSearch(e.target.value)} />
+            </div>
+
+            {/* Sort */}
+            <select id="sort-select" className="select-base w-44"
+              value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+
+            {/* View mode toggle */}
+            <div className="flex border border-gray-200 rounded-xl overflow-hidden flex-shrink-0">
+              <button type="button" title="Dạng lưới"
+                onClick={() => setViewMode("grid")}
+                className="px-3 py-2 transition-colors"
+                style={{ background: viewMode === "grid" ? "#f0fdf4" : "#fff", color: viewMode === "grid" ? "#10b981" : "#9ca3af" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                  <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                </svg>
+              </button>
+              <button type="button" title="Dạng danh sách"
+                onClick={() => setViewMode("list")}
+                className="px-3 py-2 transition-colors border-l border-gray-200"
+                style={{ background: viewMode === "list" ? "#f0fdf4" : "#fff", color: viewMode === "list" ? "#10b981" : "#9ca3af" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+                  <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
+                  <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Nearby results banner */}
+          {nearbyMode && (
+            <div className="mb-4 px-4 py-3 rounded-xl text-sm font-semibold"
+              style={{ background:"#eef2ff", color:"#4338ca" }}>
+              📍 Hiển thị {nearbyVenues.length} sân trong bán kính 5km từ vị trí của bạn
+            </div>
+          )}
+
+          {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
+
+          {/* Grid / List */}
+          {loading || nearbyLoading ? (
+            <div className={viewMode === "grid" ? "grid gap-5 md:grid-cols-2 xl:grid-cols-3" : "space-y-4"}>
+              {[1,2,3,4,5,6].map((i) => (
+                <div key={i} className="fc-card overflow-hidden">
+                  <div className="skeleton h-48" />
+                  <div className="p-4 space-y-3">
+                    <div className="skeleton h-5 w-3/4" /><div className="skeleton h-4 w-1/2" />
+                    <div className="flex gap-2"><div className="skeleton h-9 flex-1" /><div className="skeleton h-9 flex-1" /></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (nearbyMode ? nearbyVenues : filtered).length === 0 ? (
+            <div className="text-center py-20">
+              <div className="text-6xl mb-4">🏟️</div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">Không tìm thấy sân phù hợp</h3>
+              <p className="text-sm text-gray-400 mb-4">Thử thay đổi bộ lọc hoặc từ khóa</p>
+              <button type="button" onClick={onReset} className="btn-primary text-sm">Xoá bộ lọc</button>
+            </div>
+          ) : viewMode === "grid" ? (
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {(nearbyMode ? nearbyVenues : filtered).map((venue) => (
+                <VenueCard key={venue.id} venue={venue} viewMode="grid"
+                  onEdit={canManage ? onEditVenue : undefined} onSelect={onSelectVenue} />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {(nearbyMode ? nearbyVenues : filtered).map((venue) => (
+                <VenueCard key={venue.id} venue={venue} viewMode="list"
+                  onEdit={canManage ? onEditVenue : undefined} onSelect={onSelectVenue} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
-
-      {canManageVenuePanels ? (
-        <div className="glass-panel p-4 sm:p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="title-lg">{editingVenueId ? `Chỉnh sửa sân #${editingVenueId}` : "Tạo sân mới"}</h2>
-              <p className="muted mt-1">{roleLabel} có thể cập nhật thông tin sân, ảnh và giá ngay trên form này.</p>
-            </div>
-            <span className="rounded-full border border-[#d8caef] bg-white/75 px-3 py-1 text-xs font-semibold text-[#5f4d86]">{roleLabel}</span>
-          </div>
-          {createError ? <p className="mt-2 text-sm text-red-600">Lỗi lưu sân: {createError}</p> : null}
-          <form className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-12" onSubmit={onSaveVenue}>
-            <div className="md:col-span-6">
-              <label className="label-base">Tên sân</label>
-              <input className="input-base" value={createForm.name} onChange={(e) => setCreateForm((prev) => ({ ...prev, name: e.target.value }))} required />
-            </div>
-            <div className="md:col-span-6">
-              <label className="label-base">Địa chỉ</label>
-              <input className="input-base" value={createForm.address} onChange={(e) => setCreateForm((prev) => ({ ...prev, address: e.target.value }))} />
-            </div>
-            <div className="md:col-span-4">
-              <label className="label-base">Quận/Huyện</label>
-              <input className="input-base" value={createForm.district} onChange={(e) => setCreateForm((prev) => ({ ...prev, district: e.target.value }))} />
-            </div>
-            <div className="md:col-span-4">
-              <label className="label-base">Tỉnh/Thành</label>
-              <input className="input-base" value={createForm.city} onChange={(e) => setCreateForm((prev) => ({ ...prev, city: e.target.value }))} />
-            </div>
-            <div className="md:col-span-2">
-              <label className="label-base">Vĩ độ</label>
-              <input className="input-base" type="number" value={createForm.latitude} onChange={(e) => setCreateForm((prev) => ({ ...prev, latitude: e.target.value }))} />
-            </div>
-            <div className="md:col-span-2">
-              <label className="label-base">Kinh độ</label>
-              <input className="input-base" type="number" value={createForm.longitude} onChange={(e) => setCreateForm((prev) => ({ ...prev, longitude: e.target.value }))} />
-            </div>
-            <div className="md:col-span-4">
-              <label className="label-base">Giá thường</label>
-              <input className="input-base" type="number" value={createForm.normalPrice} onChange={(e) => setCreateForm((prev) => ({ ...prev, normalPrice: e.target.value }))} />
-            </div>
-            <div className="md:col-span-4">
-              <label className="label-base">Giá cuối tuần</label>
-              <input className="input-base" type="number" value={createForm.weekendPrice} onChange={(e) => setCreateForm((prev) => ({ ...prev, weekendPrice: e.target.value }))} />
-            </div>
-            <div className="md:col-span-4">
-              <label className="label-base">Giá cao điểm</label>
-              <input className="input-base" type="number" value={createForm.primePrice} onChange={(e) => setCreateForm((prev) => ({ ...prev, primePrice: e.target.value }))} />
-            </div>
-            <div className="md:col-span-6">
-              <label className="label-base">Ảnh URL</label>
-              <input className="input-base" value={createForm.imageUrl} onChange={(e) => setCreateForm((prev) => ({ ...prev, imageUrl: e.target.value }))} />
-            </div>
-            <div className="md:col-span-6">
-              <label className="label-base">Link Video</label>
-              <input className="input-base" value={createForm.videoUrl} onChange={(e) => setCreateForm((prev) => ({ ...prev, videoUrl: e.target.value }))} />
-            </div>
-            <div className="md:col-span-6">
-              <label className="label-base">Giờ cao điểm (phân tách dấu phẩy)</label>
-              <input className="input-base" value={createForm.popularTimesText} onChange={(e) => setCreateForm((prev) => ({ ...prev, popularTimesText: e.target.value }))} placeholder="18:00-19:30, 20:00-21:30" />
-            </div>
-            <div className="md:col-span-6">
-              <label className="label-base">Link QR Code</label>
-              <input className="input-base" value={createForm.qrCodeUrl} onChange={(e) => setCreateForm((prev) => ({ ...prev, qrCodeUrl: e.target.value }))} />
-            </div>
-            <div className="md:col-span-12">
-              <label className="label-base">Mô tả</label>
-              <textarea className="input-base min-h-24" value={createForm.description} onChange={(e) => setCreateForm((prev) => ({ ...prev, description: e.target.value }))} />
-            </div>
-            <div className="md:col-span-12 flex justify-end gap-2">
-              {editingVenueId ? (
-                <button className="btn-secondary" onClick={resetVenueForm} type="button">
-                  Huỷ chỉnh sửa
-                </button>
-              ) : null}
-              <button className="btn-primary" disabled={creating} type="submit">{creating ? "Đang lưu..." : editingVenueId ? "Cập nhật sân" : "Tạo sân"}</button>
-            </div>
-          </form>
-        </div>
-      ) : (
-        <div className="glass-panel p-4 sm:p-5">
-          <h2 className="title-lg">Khu vực đặt sân</h2>
-          <p className="muted mt-1">Bạn đang ở chế độ xem sân và đặt sân. Chức năng tạo hoặc chỉnh sửa sân chỉ dành cho chủ sân và quản trị viên.</p>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="glass-panel p-8 text-center text-fc-muted">Đang tải danh sách sân...</div>
-      ) : items.length === 0 ? (
-        <div className="glass-panel p-8 text-center text-fc-muted">Không tìm thấy sân phù hợp.</div>
-      ) : (
-        <div className="space-y-4">
-          <p className="text-sm text-[#5f6f65]">
-            Đang hiển thị <span className="font-semibold text-[#214e28]">{visibleTotal}</span> sân phù hợp.
-          </p>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {filteredVenues.map((venue) => (
-              <VenueCard key={venue.id} onEdit={canManageVenuePanels ? onEditVenue : undefined} venue={venue} onSelect={onSelectVenue} />
-            ))}
-          </div>
-        </div>
-      )}
     </section>
   );
 }

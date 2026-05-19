@@ -62,14 +62,22 @@ public class VenueController {
 
     /**
      * Get nearby venues
-     * GET /api/venues/nearby
+     * GET /api/venues/nearby?lat=...&lng=...&maxDistance=5000
+     * Supports both 'lat'/'lng' (frontend default) and 'latitude'/'longitude' params.
      */
     @GetMapping("/nearby")
     public ResponseEntity<List<VenueResponse>> getNearbyVenues(
-            @RequestParam Double latitude,
-            @RequestParam Double longitude,
+            @RequestParam(name = "lat", required = false) Double lat,
+            @RequestParam(name = "latitude", required = false) Double latitude,
+            @RequestParam(name = "lng", required = false) Double lng,
+            @RequestParam(name = "longitude", required = false) Double longitude,
             @RequestParam(defaultValue = "5000") Integer maxDistance) {
-        List<Venue> venues = venueService.getNearbyVenues(latitude, longitude, maxDistance);
+        double resolvedLat = lat != null ? lat : (latitude != null ? latitude : 0);
+        double resolvedLng = lng != null ? lng : (longitude != null ? longitude : 0);
+        if (resolvedLat == 0 && resolvedLng == 0) {
+            return ResponseEntity.badRequest().build();
+        }
+        List<Venue> venues = venueService.getNearbyVenues(resolvedLat, resolvedLng, maxDistance);
         return ResponseEntity.ok(DtoMapper.toVenueResponseList(venues));
     }
 

@@ -14,8 +14,20 @@ export const fetchMyBookings = createAsyncThunk("bookings/fetchMyBookings", asyn
   return bookingService.getMyBookings();
 });
 
+export const fetchAllBookings = createAsyncThunk("bookings/fetchAllBookings", async (params = {}) => {
+  return bookingService.getAllBookings(params);
+});
+
 export const createBooking = createAsyncThunk("bookings/createBooking", async (payload) => {
   return bookingService.createBooking(payload);
+});
+
+export const checkInBooking = createAsyncThunk("bookings/checkInBooking", async (bookingId, { rejectWithValue }) => {
+  try {
+    return await bookingService.checkInBooking(bookingId);
+  } catch (error) {
+    return rejectWithValue(error?.response?.data?.message || error?.message || "Check-in thất bại");
+  }
 });
 
 export const processPayment = createAsyncThunk("bookings/processPayment", async ({ bookingId, payload }) => {
@@ -69,8 +81,25 @@ const bookingSlice = createSlice({
       .addCase(processPayment.rejected, (state) => {
         state.paymentLoading = false;
       })
+      .addCase(fetchAllBookings.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchAllBookings.fulfilled, (state, action) => {
+        state.loading = false;
+        state.allItems = action.payload;
+      })
+      .addCase(fetchAllBookings.rejected, (state) => {
+        state.loading = false;
+      })
+      .addCase(checkInBooking.fulfilled, (state, action) => {
+        state.items = state.items.map((item) => (item.id === action.payload.id ? action.payload : item));
+        const idx = (state.allItems || []).findIndex((i) => i.id === action.payload.id);
+        if (idx !== -1) state.allItems[idx] = action.payload;
+      })
       .addCase(cancelBooking.fulfilled, (state, action) => {
         state.items = state.items.map((item) => (item.id === action.payload.id ? action.payload : item));
+        const idx = (state.allItems || []).findIndex((i) => i.id === action.payload.id);
+        if (idx !== -1) state.allItems[idx] = action.payload;
       });
   },
 });

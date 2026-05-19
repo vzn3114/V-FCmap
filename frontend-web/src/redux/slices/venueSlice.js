@@ -49,6 +49,30 @@ export const updateVenue = createAsyncThunk("venues/updateVenue", async ({ venue
   }
 });
 
+export const verifyVenue = createAsyncThunk("venues/verifyVenue", async (venueId, { rejectWithValue }) => {
+  try {
+    return await venueService.verifyVenue(venueId);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+export const deleteVenue = createAsyncThunk("venues/deleteVenue", async (venueId, { rejectWithValue }) => {
+  try {
+    return await venueService.deleteVenue(venueId);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+export const fetchNearbyVenues = createAsyncThunk("venues/fetchNearbyVenues", async ({ lat, lng, maxDistance }, { rejectWithValue }) => {
+  try {
+    return await venueService.getNearbyVenues(lat, lng, maxDistance);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
 const venueSlice = createSlice({
   name: "venues",
   initialState,
@@ -97,6 +121,14 @@ const venueSlice = createSlice({
       .addCase(updateVenue.rejected, (state, action) => {
         state.updating = false;
         state.updateError = action.payload || "Khong the cap nhat san";
+      })
+      // verifyVenue
+      .addCase(verifyVenue.fulfilled, (state, action) => {
+        state.items = state.items.map((item) => (item.id === action.payload.id ? action.payload : item));
+      })
+      // deleteVenue
+      .addCase(deleteVenue.fulfilled, (state, action) => {
+        state.items = state.items.filter((item) => item.id !== action.payload);
       });
   },
 });

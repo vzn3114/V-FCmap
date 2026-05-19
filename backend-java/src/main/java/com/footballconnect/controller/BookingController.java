@@ -83,10 +83,11 @@ public class BookingController {
 
     /**
      * Check-in for booking
-     * POST /api/bookings/{id}/checkin
+     * POST /api/bookings/{id}/checkin  (body is optional)
      */
     @PostMapping("/{id}/checkin")
-    public ResponseEntity<BookingResponse> checkIn(@PathVariable Long id, @RequestBody CheckInRequest checkInRequest) {
+    public ResponseEntity<BookingResponse> checkIn(@PathVariable Long id,
+            @RequestBody(required = false) CheckInRequest checkInRequest) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Booking updated = bookingService.checkIn(id, email);
         return ResponseEntity.ok(DtoMapper.toBookingResponse(updated));

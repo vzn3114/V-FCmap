@@ -40,7 +40,6 @@ const navigationByRole = {
     { key: "teams", label: "Đội bóng", path: "/teams" },
     { key: "reviews", label: "Đánh giá", path: "/reviews" },
     { key: "reports", label: "Báo cáo", path: "/reports" },
-    { key: "profile", label: "Tài khoản", path: "/profile" },
   ],
   [ROLES.USER]: [
     { key: "home", label: "Trang chủ", path: "/" },
@@ -49,7 +48,6 @@ const navigationByRole = {
     { key: "teams", label: "Đội bóng", path: "/teams" },
     { key: "reviews", label: "Đánh giá", path: "/reviews" },
     { key: "reports", label: "Báo cáo", path: "/reports" },
-    { key: "profile", label: "Tài khoản", path: "/profile" },
   ],
   [ROLES.VENUE_OWNER]: [
     { key: "home", label: "Trang chủ", path: "/" },
@@ -58,7 +56,6 @@ const navigationByRole = {
     { key: "teams", label: "Đội bóng", path: "/teams" },
     { key: "reviews", label: "Đánh giá", path: "/reviews" },
     { key: "reports", label: "Báo cáo", path: "/reports" },
-    { key: "profile", label: "Tài khoản", path: "/profile" },
   ],
   [ROLES.ADMIN]: [
     { key: "home", label: "Trang chủ", path: "/" },
@@ -68,7 +65,6 @@ const navigationByRole = {
     { key: "matches", label: "Trận đấu", path: "/matches" },
     { key: "reviews", label: "Đánh giá", path: "/reviews" },
     { key: "reports", label: "Báo cáo", path: "/reports" },
-    { key: "profile", label: "Tài khoản", path: "/profile" },
   ],
 };
 
@@ -211,15 +207,18 @@ const homeHeroByRole = {
 };
 
 const basePermissionsByRole = {
+  // PLAYER/USER: Mọi user đã đăng nhập đều có thể tạo đội lần đầu (CREATE_TEAM là quyền cơ bản)
   [ROLES.PLAYER]: [
     PERMISSIONS.VIEW_VENUE,
     PERMISSIONS.CREATE_BOOKING,
     PERMISSIONS.VIEW_BOOKING,
+    PERMISSIONS.CREATE_TEAM,   // ✅ Cho phép bất kỳ user nào tạo đội lần đầu
   ],
   [ROLES.USER]: [
     PERMISSIONS.VIEW_VENUE,
     PERMISSIONS.CREATE_BOOKING,
     PERMISSIONS.VIEW_BOOKING,
+    PERMISSIONS.CREATE_TEAM,   // ✅ Cho phép bất kỳ user nào tạo đội lần đầu
   ],
   [ROLES.VENUE_OWNER]: [
     PERMISSIONS.VIEW_VENUE,
@@ -233,11 +232,11 @@ const basePermissionsByRole = {
   [ROLES.ADMIN]: ["*"],
 };
 
+// Quyền mở rộng chỉ khi đã là captain của ít nhất 1 đội (đã có đội rồi)
 const captainExtendedPermissions = [
-  PERMISSIONS.CREATE_TEAM,
-  PERMISSIONS.MANAGE_TEAM,
-  PERMISSIONS.INVITE_MEMBER,
-  PERMISSIONS.CHALLENGE_TEAM,
+  PERMISSIONS.MANAGE_TEAM,    // Chỉnh sửa đội đang sở hữu
+  PERMISSIONS.INVITE_MEMBER,  // Mời thành viên vào đội
+  PERMISSIONS.CHALLENGE_TEAM, // Gửi thách đấu
 ];
 
 export const getEffectiveRole = (user) => {

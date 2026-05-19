@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import toast from "react-hot-toast";
 
@@ -10,438 +10,532 @@ import venueService from "../../services/venueService";
 import { buildHomeViewModel, isVerifiedUser } from "./homeViewModel";
 import { getHomeHeroCopy, getHomeRoleHighlights, getRoleLabel } from "../../navigation/roleAccess";
 
-const modules = [
-  {
-    title: "Sân bóng",
-    desc: "Tìm sân theo khu vực, giá, loại sân và điểm đánh giá.",
-    path: "/venues",
-    cta: "Xem danh sách sân",
-  },
-  {
-    title: "Đặt sân",
-    desc: "Tạo booking, check-in và thanh toán theo luồng backend.",
-    path: "/bookings",
-    cta: "Quản lý đặt sân",
-  },
-  {
-    title: "Đội bóng",
-    desc: "Xem đội bóng, cấp bậc và điểm xếp hạng.",
-    path: "/teams",
-    cta: "Xem đội bóng",
-  },
-];
+/* ── Search tabs ───────────────────────────────── */
+const TABS = { VENUE: "venue", OPPONENT: "opponent", BOOK: "book" };
 
-function HomeActionButton({ action, onAction }) {
-  const baseClass =
-    action.tone === "primary"
-      ? "inline-flex items-center rounded-full border border-[#7df16f] bg-[#d2ffd0] px-4 py-2 text-sm font-extrabold tracking-wide text-[#18702a] transition hover:-translate-y-0.5"
-      : "inline-flex items-center rounded-full border border-[#d8caef] bg-white/80 px-4 py-2 text-sm font-semibold text-[#5f4d86] transition hover:-translate-y-0.5";
-
-  if (action.kind === "link") {
-    return (
-      <Link className={baseClass} to={action.href}>
-        {action.label}
-      </Link>
-    );
-  }
-
+/* ── Star Rating ────────────────────────────────── */
+function Stars({ value }) {
+  const n = Math.round(Number(value) || 0);
   return (
-    <button className={baseClass} disabled={Boolean(action.disabled)} onClick={() => onAction(action)} type="button">
-      {action.label}
-    </button>
+    <span className="flex gap-0.5">
+      {[1,2,3,4,5].map((i) => (
+        <svg key={i} width="13" height="13" viewBox="0 0 24 24" fill={i <= n ? "#f59e0b" : "none"}
+          stroke={i <= n ? "#f59e0b" : "#d1d5db"} strokeWidth="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+        </svg>
+      ))}
+    </span>
   );
 }
 
-function HomeCard({ item, kind, onAction }) {
-  const imageUrl =
-    kind === "venue"
-      ? item.images?.[0]?.url || "https://images.unsplash.com/photo-1518604666860-9ed391f76460?q=80&w=1200&auto=format&fit=crop"
-      : item.logo || "https://res.cloudinary.com/default-team-logo.png";
+/* ── Image helpers ───────────────────────────────── */
+const VENUE_FALLBACK = "https://images.unsplash.com/photo-1575361204480-aadea25e6e68?w=600&auto=format&fit=crop&q=60";
+function getVenueImg(venue) {
+  const raw = venue.images?.[0]?.url;
+  if (!raw) return VENUE_FALLBACK;
+  if (raw.includes("source.unsplash.com")) return VENUE_FALLBACK;  // deprecated API → 404
+  if (raw.includes("res.cloudinary.com/default")) return VENUE_FALLBACK;  // fake placeholder
+  return raw;
+}
+
+/* ── VenueCard ──────────────────────────────────── */
+function VenueCard({ venue, onBook }) {
+  const img = getVenueImg(venue);
+  const price = venue.pricing?.normalTime;
+  const priceText = typeof price === "number" && price > 0 ? `${price.toLocaleString("vi-VN")} VNĐ/h` : "Liên hệ";
+  const district = venue.location?.district || "Chưa rõ";
+  const city = venue.location?.city || "Hồ Chí Minh";
+  const rating = Number.isFinite(venue.averageRating) ? venue.averageRating : 0;
 
   return (
-    <article className="overflow-hidden rounded-[24px] border border-[#e5e1f0] bg-white/75 shadow-[0_16px_45px_rgba(31,29,54,0.08)] backdrop-blur-sm transition hover:-translate-y-1">
-      <div
-        className={kind === "venue" ? "h-44 bg-cover bg-center" : "flex h-44 items-center justify-center bg-[linear-gradient(135deg,#eef7ff_0%,#f9f3ff_100%)] p-6"}
-        style={kind === "venue" ? { backgroundImage: `url(${imageUrl})` } : undefined}
-      >
-        {kind === "team" ? (
-          <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-2xl border border-white/80 bg-white shadow-[0_14px_28px_rgba(90,72,121,0.12)]">
-            <img alt={item.name} className="h-full w-full object-cover" src={imageUrl} />
+    <article className="fc-card overflow-hidden group cursor-pointer">
+      {/* Image */}
+      <div className="relative h-48 overflow-hidden bg-gray-200">
+        <img
+          src={img} alt={venue.name}
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
+          onError={(e) => { e.target.onerror = null; e.target.src = VENUE_FALLBACK; }}
+        />
+        {/* Price badge */}
+        <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg text-sm font-bold text-white"
+          style={{ background: "rgba(16,185,129,0.92)", backdropFilter: "blur(4px)" }}>
+          {priceText}
+        </div>
+        {venue.isVerified && (
+          <div className="absolute top-3 left-3 px-2 py-1 rounded-lg text-xs font-semibold"
+            style={{ background: "rgba(255,255,255,0.92)", color: "#10b981" }}>
+            ✓ Đã xác minh
           </div>
-        ) : null}
+        )}
       </div>
 
-      <div className="space-y-3 p-4 sm:p-5">
-        <div className="flex flex-wrap items-center gap-2">
-          {kind === "venue" ? (
-            <>
-              <span className="rounded-full bg-[#eefbf1] px-3 py-1 text-xs font-semibold text-[#2b7a35]">Sân bóng</span>
-              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${item.isVerified ? "bg-[#e4f5ff] text-[#1d6b99]" : "bg-[#f4edf9] text-[#7b4da3]"}`}>
-                {item.isVerified ? "Đã xác minh" : "Chưa xác minh"}
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="rounded-full bg-[#eef7ff] px-3 py-1 text-xs font-semibold text-[#275c8d]">Đội bóng</span>
-              <span className="rounded-full bg-[#eefbf1] px-3 py-1 text-xs font-semibold text-[#2b7a35]">Đang tìm đối thủ</span>
-              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${item.isVerified ? "bg-[#e4f5ff] text-[#1d6b99]" : "bg-[#f4edf9] text-[#7b4da3]"}`}>
-                {item.isVerified ? "Đã xác minh" : "Chưa xác minh"}
-              </span>
-            </>
+      {/* Body */}
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h3 className="font-bold text-gray-900 text-[15px] leading-snug line-clamp-1"
+            style={{ fontFamily: "Sora, sans-serif" }}>{venue.name}</h3>
+        </div>
+
+        <p className="text-sm text-gray-500 flex items-center gap-1 mb-2">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+          {district}, {city}
+        </p>
+
+        <div className="flex items-center gap-2 mb-3">
+          <Stars value={rating} />
+          <span className="text-xs text-gray-500">({venue.totalReviews || 0})</span>
+          {venue.totalBookings > 0 && (
+            <span className="text-xs text-gray-400 ml-auto">{venue.totalBookings} lượt đặt</span>
           )}
         </div>
 
-        <div>
-          <h3 className="text-2xl font-[800] tracking-tight text-[#23312a] [font-family:'Sora',sans-serif]">{item.name}</h3>
-          <p className="mt-2 text-sm leading-relaxed text-[#55645b] [font-family:'Space_Grotesk',sans-serif]">
-            {kind === "venue" ? item.description || item.location?.address || "Chưa có mô tả" : item.teamDescription || "Chưa có mô tả đội"}
-          </p>
-        </div>
-
-        <div className="space-y-1 text-sm text-[#5f6f65] [font-family:'Space_Grotesk',sans-serif]">
-          {kind === "venue" ? (
-            <>
-              <p>
-                {item.location?.district || "-"}, {item.location?.city || "-"}
-              </p>
-              <p>
-                Chủ sân: <span className="font-semibold text-[#4f3f67]">{item.owner?.name || "-"}</span>
-              </p>
-              <p>
-                Trạng thái: <span className="font-semibold text-[#4f3f67]">{item.status || "-"}</span>
-              </p>
-            </>
-          ) : (
-            <>
-              <p>
-                Hạng: <span className="font-semibold text-[#4f3f67]">{item.tier || "-"}</span>
-              </p>
-              <p>
-                Điểm xếp hạng: <span className="font-semibold text-[#4f3f67]">{item.rankingPoints ?? 0}</span>
-              </p>
-              <p>
-                Đội trưởng: <span className="font-semibold text-[#4f3f67]">{item.captain?.name || "-"}</span>
-              </p>
-            </>
-          )}
-        </div>
-
-        <div className="flex flex-wrap gap-2 pt-1">
-          {item.actions.map((action) => (
-            <HomeActionButton action={action} key={action.key} onAction={onAction} />
-          ))}
+        <div className="flex gap-2">
+          <Link to="/venues" className="btn-secondary text-xs h-8 px-3 min-w-0 flex-1 text-center">
+            Chi tiết
+          </Link>
+          <button
+            type="button"
+            id={`btn-book-${venue.id}`}
+            onClick={() => onBook(venue.id)}
+            className="btn-primary text-xs h-8 px-3 min-w-0 flex-1"
+          >
+            Đặt sân
+          </button>
         </div>
       </div>
     </article>
   );
 }
 
-function HomeSectionHeader({ badge, title, subtitle, countLabel }) {
+/* ── TeamCard ───────────────────────────────────── */
+function TeamCard({ team, onChallenge }) {
+  const logo = team.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(team.name)}&background=10b981&color=fff&size=80`;
   return (
-    <div className="flex items-end justify-between gap-4">
-      <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#6b5b8f] [font-family:'Space_Grotesk',sans-serif]">{badge}</p>
-        <h2 className="mt-2 text-3xl font-[900] tracking-tight text-[#213127] [font-family:'Sora',sans-serif]">{title}</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#58655c] [font-family:'Space_Grotesk',sans-serif]">{subtitle}</p>
+    <article className="fc-card p-4 flex gap-4 items-start">
+      <img src={logo} alt={team.name}
+        className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border border-gray-100"
+        onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(team.name)}&background=10b981&color=fff&size=80`; }}
+      />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="font-bold text-gray-900 text-[15px] truncate" style={{ fontFamily: "Sora, sans-serif" }}>
+            {team.name}
+          </h3>
+          <span className="badge-green text-[10px] flex-shrink-0">Tìm đối thủ</span>
+        </div>
+        <p className="text-xs text-gray-500 mb-2">
+          Hạng: <span className="font-semibold text-gray-700">{team.tier || "-"}</span>
+          {" · "}Điểm: <span className="font-semibold text-gray-700">{team.rankingPoints ?? 0}</span>
+        </p>
+        <p className="text-xs text-gray-500 mb-3 line-clamp-2">{team.teamDescription || "Chưa có mô tả"}</p>
+        <div className="flex gap-2">
+          <Link to="/teams" className="btn-secondary text-xs h-7 px-2.5 min-w-0">Xem đội</Link>
+          {team.actions?.some((a) => a.kind === "challenge") && (
+            <button type="button" onClick={() => onChallenge(team)}
+              className="btn-primary text-xs h-7 px-2.5 min-w-0">
+              Gửi lời mời
+            </button>
+          )}
+        </div>
       </div>
+    </article>
+  );
+}
 
-      <span className="rounded-full border border-[#d8caef] bg-white/75 px-4 py-2 text-sm font-semibold text-[#5f4d86] [font-family:'Space_Grotesk',sans-serif]">
-        {countLabel}
-      </span>
+/* ── StatCard ───────────────────────────────────── */
+function StatCard({ value, label, icon, color }) {
+  return (
+    <div className="fc-card p-5 flex items-center gap-4">
+      <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
+        style={{ background: color + "18", color }}>
+        {icon}
+      </div>
+      <div>
+        <p className="text-2xl font-black text-gray-900" style={{ fontFamily: "Sora, sans-serif" }}>{value}</p>
+        <p className="text-sm text-gray-500">{label}</p>
+      </div>
     </div>
   );
 }
 
+/* ── SearchWidget ───────────────────────────────── */
+function SearchWidget({ tab, onTabChange }) {
+  const navigate = useNavigate();
+  const [q, setQ] = useState("");
+  const tabs = [
+    { key: TABS.VENUE, label: "🏟️ Tìm sân" },
+    { key: TABS.OPPONENT, label: "⚔️ Tìm đối thủ" },
+    { key: TABS.BOOK, label: "📋 Đặt sân" },
+  ];
+
+  return (
+    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-5">
+      {/* Tab row */}
+      <div className="flex gap-1 mb-4">
+        {tabs.map((t) => (
+          <button key={t.key} type="button"
+            onClick={() => onTabChange(t.key)}
+            className="flex-1 py-2 px-2 rounded-xl text-sm font-semibold transition-all"
+            style={tab === t.key
+              ? { background: "#10b981", color: "#fff" }
+              : { background: "#f3f4f6", color: "#6b7280" }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Input row */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="16" height="16"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            className="input-base pl-9"
+            placeholder={tab === TABS.VENUE ? "Tên sân, quận, thành phố..." : tab === TABS.OPPONENT ? "Tên đội, khu vực..." : "Chọn sân để đặt..."}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            id="home-search-input"
+          />
+        </div>
+        <button
+          type="button"
+          id="btn-home-search"
+          onClick={() => navigate(tab === TABS.OPPONENT ? "/teams" : "/venues")}
+          className="btn-primary px-5 min-w-0"
+        >
+          Tìm kiếm
+        </button>
+      </div>
+
+      {/* Quick filters */}
+      <div className="flex flex-wrap gap-2 mt-3">
+        {["Quận 1", "Quận 7", "Bình Thạnh", "Gò Vấp"].map((d) => (
+          <button key={d} type="button"
+            onClick={() => navigate("/venues")}
+            className="px-3 py-1 text-xs font-medium rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors">
+            {d}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Hero Section ───────────────────────────────── */
+function HeroSection({ token, user, roleHero, roleLabel, tab, onTabChange }) {
+  const navigate = useNavigate();
+  return (
+    <section className="relative overflow-hidden rounded-3xl mb-8"
+      style={{ background: "linear-gradient(135deg, #065f46 0%, #064e3b 40%, #134e4a 100%)" }}>
+      {/* BG blobs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full opacity-10"
+          style={{ background: "radial-gradient(circle, #34d399, transparent)" }} />
+        <div className="absolute -bottom-10 -left-10 w-64 h-64 rounded-full opacity-10"
+          style={{ background: "radial-gradient(circle, #6ee7b7, transparent)" }} />
+      </div>
+
+      <div className="relative grid lg:grid-cols-2 gap-8 p-8 sm:p-12">
+        {/* Left */}
+        <div className="flex flex-col justify-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4 w-fit"
+            style={{ background: "rgba(52,211,153,0.15)", border: "1px solid rgba(52,211,153,0.3)" }}>
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span className="text-xs font-semibold text-emerald-300">
+              {token ? `Xin chào, ${user?.name || user?.email}` : "Nền tảng bóng đá số 1 Việt Nam"}
+            </span>
+          </div>
+
+          <h1 className="text-4xl sm:text-5xl font-black leading-tight text-white mb-4"
+            style={{ fontFamily: "Sora, sans-serif" }}>
+            Đặt sân bóng<br />
+            <span style={{ color: "#34d399" }}>nhanh & dễ</span>
+          </h1>
+
+          <p className="text-emerald-100 text-base mb-8 max-w-sm">
+            Tìm kiếm sân bóng theo khu vực, so sánh giá và đặt ngay trong vài bước đơn giản.
+          </p>
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              id="btn-hero-primary"
+              onClick={() => navigate(token ? (roleHero?.primary?.href ?? "/venues") : "/auth?mode=register")}
+              className="px-6 py-3 rounded-xl font-bold text-sm transition-all"
+              style={{ background: "#34d399", color: "#064e3b" }}
+            >
+              {token ? (roleHero?.primary?.label ?? "Xem sân bóng") : "Đăng ký miễn phí"}
+            </button>
+            {token && roleHero?.secondary && (
+              <button
+                type="button"
+                id="btn-hero-secondary"
+                onClick={() => navigate(roleHero.secondary.href)}
+                className="px-6 py-3 rounded-xl font-semibold text-sm border border-emerald-400 text-emerald-200 hover:bg-emerald-800 transition-all"
+              >
+                {roleHero.secondary.label}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Right – Search widget */}
+        <div className="flex items-center">
+          <div className="w-full">
+            <SearchWidget tab={tab} onTabChange={onTabChange} />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── HomePage ───────────────────────────────────── */
 export default function HomePage() {
-  const token = useSelector((state) => state.auth.token);
-  const user = useSelector((state) => state.auth.user);
+  const token = useSelector((s) => s.auth.token);
+  const user = useSelector((s) => s.auth.user);
+  const navigate = useNavigate();
   const year = useMemo(() => new Date().getFullYear(), []);
   const roleHero = getHomeHeroCopy(user?.role);
   const roleHighlights = getHomeRoleHighlights(user?.role);
   const roleLabel = getRoleLabel(user?.role);
+
   const [venues, setVenues] = useState([]);
   const [teams, setTeams] = useState([]);
   const [bookingsCount, setBookingsCount] = useState(null);
-  const [loadingContent, setLoadingContent] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState(TABS.VENUE);
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function loadHomeData() {
-      setLoadingContent(true);
-
-      try {
-        const [venueResult, teamResult] = await Promise.allSettled([venueService.getVenues({}), teamService.getTeams({})]);
-
-        const nextVenues = venueResult.status === "fulfilled" && Array.isArray(venueResult.value) ? venueResult.value : [];
-        const nextTeams = teamResult.status === "fulfilled" && Array.isArray(teamResult.value) ? teamResult.value : [];
-
-        let nextBookings = null;
-        if (token) {
-          try {
-            const bookingData = await bookingService.getMyBookings();
-            nextBookings = Array.isArray(bookingData) ? bookingData.length : 0;
-          } catch {
-            nextBookings = null;
-          }
-        }
-
-        if (isMounted) {
-          setVenues(nextVenues);
-          setTeams(nextTeams);
-          setBookingsCount(nextBookings);
-        }
-      } finally {
-        if (isMounted) {
-          setLoadingContent(false);
-        }
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      const [vr, tr] = await Promise.allSettled([venueService.getVenues({}), teamService.getTeams({})]);
+      if (!alive) return;
+      setVenues(vr.status === "fulfilled" && Array.isArray(vr.value) ? vr.value : []);
+      setTeams(tr.status === "fulfilled" && Array.isArray(tr.value) ? tr.value : []);
+      if (token) {
+        try {
+          const bd = await bookingService.getMyBookings();
+          if (alive) setBookingsCount(Array.isArray(bd) ? bd.length : 0);
+        } catch { /* noop */ }
       }
-    }
-
-    loadHomeData();
-
-    return () => {
-      isMounted = false;
-    };
+      if (alive) setLoading(false);
+    })();
+    return () => { alive = false; };
   }, [token]);
 
-  const homeViewModel = useMemo(() => buildHomeViewModel({ venues, teams, user }), [teams, user, venues]);
+  const vm = useMemo(() => buildHomeViewModel({ venues, teams, user }), [venues, teams, user]);
 
-  const displayStat = (value) => {
-    if (loadingContent) return "...";
-    if (value === null || value === undefined) return "-";
-    return String(value);
-  };
-
-  const handleCardAction = async (action) => {
-    if (action.kind !== "challenge" || !action.payload) {
-      return;
-    }
-
+  const handleCardAction = async (team) => {
+    const action = team.actions?.find((a) => a.kind === "challenge");
+    if (!action?.payload) return;
     try {
       await matchmakingService.sendChallenge(action.payload);
       toast.success("Đã gửi lời mời giao lưu");
-    } catch {
-      // apiClient already shows a toast for request failures.
-    }
+    } catch { /* apiClient shows toast */ }
   };
 
+  const handleBookVenue = (venueId) => {
+    navigate("/bookings");
+  };
+
+  /* Loading skeleton */
+  const SkeletonCard = () => (
+    <div className="fc-card overflow-hidden">
+      <div className="skeleton h-48" />
+      <div className="p-4 space-y-3">
+        <div className="skeleton h-5 w-3/4" />
+        <div className="skeleton h-4 w-1/2" />
+        <div className="skeleton h-4 w-full" />
+        <div className="flex gap-2">
+          <div className="skeleton h-8 flex-1" />
+          <div className="skeleton h-8 flex-1" />
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#f3f1ea] text-[#1f2a24]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(1200px_560px_at_14%_8%,rgba(100,250,86,0.2),transparent_58%),radial-gradient(860px_460px_at_82%_28%,rgba(150,87,255,0.18),transparent_55%),linear-gradient(180deg,#f5f4ed_0%,#f1efe7_52%,#ebeadf_100%)]" />
-      <div className="pointer-events-none absolute -left-32 top-44 h-64 w-64 rounded-full border border-white/50 bg-white/30 blur-2xl" />
-      <div className="pointer-events-none absolute -right-20 bottom-20 h-56 w-56 rounded-full border border-white/30 bg-white/20 blur-2xl" />
-
-      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pb-10 pt-6 sm:px-8 lg:px-12">
-        <header className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-xl border border-[#56f15b]/70 bg-[#ecfee9] p-2 shadow-[0_0_24px_rgba(93,246,93,0.45)]">
-              <div className="h-full w-full rounded-lg bg-[linear-gradient(135deg,#46e85c_0%,#1fbb3f_100%)]" />
+    <div className="min-h-screen" style={{ background: "#f8fafc" }}>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header for non-logged-in landing */}
+        {!token && (
+          <header className="flex items-center justify-between mb-10">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow"
+                style={{ background: "linear-gradient(135deg,#10b981 0%,#059669 100%)" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="1.5"/>
+                  <path d="M12 2c0 0-4 4-4 10s4 10 4 10" stroke="white" strokeWidth="1.5"/>
+                  <path d="M12 2c0 0 4 4 4 10s-4 10-4 10" stroke="white" strokeWidth="1.5"/>
+                  <line x1="2" y1="12" x2="22" y2="12" stroke="white" strokeWidth="1.5"/>
+                </svg>
+              </div>
+              <div>
+                <p className="font-bold text-base text-gray-900">FC-Vmap</p>
+                <p className="text-xs font-medium" style={{ color: "#10b981" }}>Đặt sân dễ dàng</p>
+              </div>
             </div>
-            <div className="leading-none">
-              <p className="font-[700] tracking-tight text-[#35d34f] [font-family:'Space_Grotesk',sans-serif]">KẾT NỐI</p>
-              <p className="-mt-1 text-lg font-[800] tracking-wide [font-family:'Space_Grotesk',sans-serif]">BÓNG ĐÁ</p>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => navigate("/auth")}
+                className="btn-secondary text-sm h-9 px-4 min-w-0">Đăng nhập</button>
+              <button type="button" onClick={() => navigate("/auth?mode=register")}
+                className="btn-primary text-sm h-9 px-4 min-w-0">Đăng ký</button>
             </div>
-          </div>
+          </header>
+        )}
 
-          <nav className="hidden items-center gap-6 text-[15px] font-semibold text-[#26352e] lg:flex [font-family:'Space_Grotesk',sans-serif]">
-            <a className="hover:text-[#8f45dc]" href="#about">
-              Tổng quan
-            </a>
-            <a className="hover:text-[#8f45dc]" href="#stats">
-              Thống kê
-            </a>
-            <a className="hover:text-[#8f45dc]" href="#venues">
-              Sân bóng
-            </a>
-            <a className="hover:text-[#8f45dc]" href="#teams">
-              Đội tìm đối thủ
-            </a>
-            <a className="hover:text-[#8f45dc]" href="#modules">
-              Chức năng
-            </a>
-            {token ? (
-              <Link className="hover:text-[#8f45dc]" to="/profile">
-                Tài khoản
-              </Link>
-            ) : (
-              <Link className="hover:text-[#8f45dc]" to="/auth">
-                Đăng nhập
-              </Link>
-            )}
-            <Link
-              className="rounded-full border border-[#77f470] bg-[#d9ffd3] px-6 py-2 font-bold text-[#1d6e2a] shadow-[0_0_18px_rgba(81,239,92,0.55)] transition hover:-translate-y-0.5"
-              to={token ? "/venues" : "/auth?mode=register"}
+        {/* Hero */}
+        <HeroSection
+          token={token} user={user} roleHero={roleHero} roleLabel={roleLabel}
+          tab={activeTab} onTabChange={setActiveTab}
+        />
+
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+          <StatCard value={loading ? "..." : venues.length} label="Sân bóng" icon="🏟️" color="#10b981" />
+          <StatCard value={loading ? "..." : vm.teamCards.length} label="Đội tìm đối" icon="⚽" color="#3b82f6" />
+          <StatCard value={bookingsCount === null ? "-" : bookingsCount} label="Đặt sân của tôi" icon="📋" color="#f59e0b" />
+          <StatCard value={venues.filter((v) => v.isVerified).length || 0} label="Sân xác minh" icon="✓" color="#8b5cf6" />
+        </div>
+
+        {/* Venue Section */}
+        <section id="venues" className="mb-12">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600 mb-1">Khám phá</p>
+              <h2 className="text-2xl font-black text-gray-900" style={{ fontFamily: "Sora, sans-serif" }}>
+                Sân bóng nổi bật
+              </h2>
+            </div>
+            <button
+              type="button"
+              id="btn-view-all-venues"
+              onClick={() => navigate("/venues")}
+              className="btn-outline-green text-sm h-9 px-4 min-w-0"
             >
-              {token ? "Vào hệ thống" : "Đăng ký ngay"}
-            </Link>
-          </nav>
-        </header>
-
-        <section className="mt-8 grid items-center gap-8 lg:mt-14 lg:grid-cols-[1.05fr_0.95fr]">
-          <div id="about" className="max-w-xl">
-            <h1 className="leading-[0.9] [font-family:'Sora',sans-serif]">
-              <span className="block text-[52px] font-[800] tracking-tight text-[#45ef57] sm:text-[72px]">BÓNG ĐÁ</span>
-              <span className="mt-1 block text-[52px] font-[800] tracking-tight text-white drop-shadow-[0_2px_0_rgba(30,30,30,0.08)] sm:text-[72px]">KẾT NỐI</span>
-              <span className="ml-2 inline-block text-[52px] font-[900] text-[#8b3edf] sm:text-[72px]">//</span>
-            </h1>
-
-            <p className="mt-6 max-w-md text-lg leading-relaxed text-[#405149] [font-family:'Space_Grotesk',sans-serif]">
-              {token ? roleHero.subtitle : "Nền tảng đặt sân bóng đá và kết nối người cùng đam mê."}
-            </p>
-
-            {token && (
-              <div className="mt-3 space-y-1 [font-family:'Space_Grotesk',sans-serif]">
-                <p className="text-sm font-semibold text-[#2c7f37]">Xin chào {user?.name || user?.email}</p>
-                <p className="text-xs text-[#5b6b61]">
-                  Vai trò: {roleLabel} · Trạng thái: {isVerifiedUser(user) ? "Đã xác minh" : "Chưa xác minh"}
-                </p>
-              </div>
-            )}
-
-            <div className="mt-8">
-              <Link
-                className="inline-flex items-center rounded-full border border-[#7df16f] bg-[#d2ffd0] px-8 py-3 text-sm font-extrabold tracking-wide text-[#18702a] shadow-[0_0_18px_rgba(87,246,100,0.6)] transition hover:-translate-y-0.5 [font-family:'Space_Grotesk',sans-serif]"
-                to={token ? roleHero.primary.href : "/auth?mode=register"}
-              >
-                {token ? roleHero.primary.label : "Đăng ký ngay"}
-              </Link>
-              {token && (
-                <Link
-                  className="ml-3 inline-flex items-center rounded-full border border-[#d8caef] bg-white/75 px-8 py-3 text-sm font-semibold tracking-wide text-[#5f4d86] transition hover:-translate-y-0.5 [font-family:'Space_Grotesk',sans-serif]"
-                  to={roleHero.secondary.href}
-                >
-                  {roleHero.secondary.label}
-                </Link>
-              )}
-            </div>
+              Xem tất cả →
+            </button>
           </div>
 
-          <div id="stats" className="rounded-[26px] border border-[#e5e1f0] bg-white/50 p-4 shadow-[0_16px_45px_rgba(31,29,54,0.08)] backdrop-blur-sm sm:p-6">
-            <div className="mb-4 flex justify-end">
-              <button className="rounded-xl border border-[#d8caef] bg-[#faf6ff] px-4 py-2 text-sm font-semibold text-[#8e4fd4] [font-family:'Space_Grotesk',sans-serif]" type="button">
-                Thống kê hệ thống
-              </button>
+          {loading ? (
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {[1,2,3].map((i) => <SkeletonCard key={i} />)}
             </div>
-
-            <div className="space-y-3">
-              <div className="grid grid-cols-3 rounded-xl bg-[#7e36bc] px-5 py-4 text-center text-[38px] font-[800] leading-none text-[#cf9fff] shadow-[0_8px_18px_rgba(95,34,147,0.35)] [font-family:'Sora',sans-serif]">
-                <span>{displayStat(venues.length)}</span>
-                <span className="text-white">{displayStat(homeViewModel.teamCards.length)}</span>
-                <span>{displayStat(bookingsCount)}</span>
-              </div>
-              <div className="grid grid-cols-3 rounded-xl bg-[#7e36bc] px-5 py-4 text-center text-base font-[700] leading-none text-[#ead6ff] shadow-[0_8px_18px_rgba(95,34,147,0.35)] [font-family:'Space_Grotesk',sans-serif]">
-                <span>Venue</span>
-                <span>Team</span>
-                <span>Booking</span>
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              {[
-                { title: "người dùng", subtitle: "Bảng tài khoản" },
-                { title: "sân bóng", subtitle: "Bảng sân bóng" },
-                { title: "đặt sân", subtitle: "Bảng đặt sân" },
-              ].map((item) => (
-                <div className="rounded-xl border border-[#9aef8f] bg-[#7df267]/35 p-2 text-center shadow-[0_8px_18px_rgba(95,236,91,0.35)]" key={item.title}>
-                  <div className="mx-auto h-20 w-full rounded-lg bg-[linear-gradient(180deg,#9aa0a0_0%,#44504a_100%)]" />
-                  <p className="mt-2 text-sm font-[900] uppercase text-[#1f2b23] [font-family:'Space_Grotesk',sans-serif]">{item.title}</p>
-                  <p className="text-xs text-[#506255] [font-family:'Space_Grotesk',sans-serif]">{item.subtitle}</p>
-                  <p className="text-xs text-[#506255] [font-family:'Space_Grotesk',sans-serif]">Tham chiếu lược đồ</p>
-                </div>
-              ))}
-            </div>
-            {!token && <p className="mt-3 text-xs text-[#66766c] [font-family:'Space_Grotesk',sans-serif]">Đội bóng và đặt sân cần đăng nhập để lấy số liệu theo người dùng.</p>}
-          </div>
-        </section>
-
-        <section id="venues" className="mt-12 space-y-5">
-          <HomeSectionHeader
-            badge="Sân bóng"
-            countLabel={`${loadingContent ? "..." : homeViewModel.venueCards.length} sân`}
-            subtitle="Mỗi sân hiển thị action theo đúng quyền của người đang đăng nhập, còn phần điều kiện đã được tính sẵn trong view-model."
-            title="Danh sách sân bóng"
-          />
-
-          {homeViewModel.venueCards.length === 0 ? (
-            <div className="rounded-[24px] border border-dashed border-[#d8caef] bg-white/60 p-6 text-sm text-[#66766c] [font-family:'Space_Grotesk',sans-serif]">
-              Không có sân nào.
+          ) : vm.venueCards.length === 0 ? (
+            <div className="text-center py-16 text-gray-400">
+              <div className="text-5xl mb-3">🏟️</div>
+              <p className="font-medium">Chưa có sân bóng nào</p>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {homeViewModel.venueCards.map((venue) => (
-                <HomeCard item={venue} kind="venue" key={venue.id} onAction={handleCardAction} />
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {vm.venueCards.slice(0, 6).map((venue) => (
+                <VenueCard key={venue.id} venue={venue} onBook={handleBookVenue} />
               ))}
             </div>
           )}
         </section>
 
-        {token && (
-          <section id="role-focus" className="mt-12 space-y-5">
-            <HomeSectionHeader
-              badge={roleHero.eyebrow}
-              countLabel={roleLabel}
-              subtitle={roleHero.subtitle}
-              title={roleHero.title}
-            />
-
+        {/* Role highlights (logged in) */}
+        {token && roleHighlights?.length > 0 && (
+          <section className="mb-12">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600 mb-1">{roleHero?.eyebrow || "Dành cho bạn"}</p>
+                <h2 className="text-2xl font-black text-gray-900" style={{ fontFamily: "Sora, sans-serif" }}>
+                  {roleHero?.title || "Chức năng nổi bật"}
+                </h2>
+              </div>
+            </div>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {roleHighlights.map((item) => (
-                <Link
-                  className="rounded-[24px] border border-[#7c58ab] bg-[#6e2ca7] px-5 py-5 text-[#f3eaff] shadow-[0_16px_40px_rgba(63,25,91,0.18)] transition hover:-translate-y-1"
+                <button
                   key={item.title}
-                  to={item.href}
+                  type="button"
+                  onClick={() => navigate(item.href)}
+                  className="fc-card p-5 text-left hover:border-emerald-200 transition-all group"
                 >
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#ceb0ea] [font-family:'Space_Grotesk',sans-serif]">Điểm tập trung</p>
-                  <p className="mt-2 text-2xl font-[800] leading-tight [font-family:'Sora',sans-serif]">{item.title}</p>
-                  <p className="mt-3 text-sm leading-relaxed text-[#e5d4f6] [font-family:'Space_Grotesk',sans-serif]">{item.description}</p>
-                  <p className="mt-5 text-sm font-bold text-white [font-family:'Space_Grotesk',sans-serif]">{item.cta}</p>
-                </Link>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+                    style={{ background: "#ecfdf5" }}>
+                    <span className="text-xl">⚡</span>
+                  </div>
+                  <h3 className="font-bold text-gray-900 mb-1" style={{ fontFamily: "Sora, sans-serif" }}>{item.title}</h3>
+                  <p className="text-sm text-gray-500 mb-3 line-clamp-2">{item.description}</p>
+                  <span className="text-sm font-semibold" style={{ color: "#10b981" }}>{item.cta} →</span>
+                </button>
               ))}
             </div>
           </section>
         )}
 
-        <section id="teams" className="mt-12 space-y-5">
-          <HomeSectionHeader
-            badge="Đội bóng"
-            countLabel={`${loadingContent ? "..." : homeViewModel.teamCards.length} đội`}
-            subtitle="Chỉ các đội đang tìm đối thủ mới xuất hiện ở đây; nút gửi lời mời chỉ hiện với captain đã xác thực và có đội của riêng mình."
-            title="Đội bóng đang tìm đối thủ"
-          />
-
-          {homeViewModel.teamCards.length === 0 ? (
-            <div className="rounded-[24px] border border-dashed border-[#d8caef] bg-white/60 p-6 text-sm text-[#66766c] [font-family:'Space_Grotesk',sans-serif]">
-              Chưa có đội nào đang tìm đối thủ.
+        {/* Teams Section */}
+        {activeTab === TABS.OPPONENT && vm.teamCards.length > 0 && (
+          <section id="teams" className="mb-12">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-blue-600 mb-1">Giao hữu</p>
+                <h2 className="text-2xl font-black text-gray-900" style={{ fontFamily: "Sora, sans-serif" }}>
+                  Đội đang tìm đối thủ
+                </h2>
+              </div>
+              <button type="button" onClick={() => navigate("/teams")}
+                className="btn-secondary text-sm h-9 px-4 min-w-0">Xem tất cả →</button>
             </div>
-          ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {homeViewModel.teamCards.map((team) => (
-                <HomeCard item={team} kind="team" key={team.id} onAction={handleCardAction} />
+              {vm.teamCards.slice(0, 6).map((team) => (
+                <TeamCard key={team.id} team={team} onChallenge={handleCardAction} />
               ))}
             </div>
-          )}
-        </section>
+          </section>
+        )}
 
+        {/* CTA for guests */}
         {!token && (
-          <section id="modules" className="mt-auto pt-10">
-            <p className="mb-4 text-[40px] font-[900] tracking-tight text-[#213127] [font-family:'Sora',sans-serif]">CHỨC NĂNG CHÍNH</p>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {modules.map((module) => (
-                <Link className="rounded-xl border border-[#7c58ab] bg-[#6e2ca7] px-4 py-4 text-[#ceb0ea] transition hover:-translate-y-0.5" key={module.title} to="/auth?mode=register">
-                  <p className="text-2xl font-[800] [font-family:'Sora',sans-serif]">{module.title}</p>
-                  <p className="mt-2 text-sm [font-family:'Space_Grotesk',sans-serif]">{module.desc}</p>
-                  <p className="mt-3 text-sm font-bold text-white [font-family:'Space_Grotesk',sans-serif]">{module.cta}</p>
-                </Link>
-              ))}
-              <div className="rounded-xl border border-[#7c58ab] bg-[#6e2ca7] px-4 py-4 text-center text-2xl font-[800] text-[#ceb0ea] [font-family:'Sora',sans-serif]">
-                CHƯA ĐĂNG NHẬP
+          <section className="mb-12">
+            <div className="rounded-2xl p-8 sm:p-12 text-center"
+              style={{ background: "linear-gradient(135deg,#ecfdf5 0%,#d1fae5 100%)", border: "1px solid #a7f3d0" }}>
+              <h2 className="text-3xl font-black text-gray-900 mb-3" style={{ fontFamily: "Sora, sans-serif" }}>
+                Sẵn sàng đặt sân?
+              </h2>
+              <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                Đăng ký miễn phí và bắt đầu tìm kiếm sân bóng ngay hôm nay.
+              </p>
+              <div className="flex gap-3 justify-center flex-wrap">
+                <button type="button" onClick={() => navigate("/auth?mode=register")}
+                  className="btn-primary px-8">Đăng ký ngay</button>
+                <button type="button" onClick={() => navigate("/auth")}
+                  className="btn-secondary px-8">Đăng nhập</button>
               </div>
             </div>
           </section>
         )}
 
-        <footer className="pt-8 text-sm text-[#4b5c53] [font-family:'Space_Grotesk',sans-serif]">FC-Vmap - giao diện trang chủ - {year}</footer>
+        {/* Footer */}
+        <footer className="border-t border-gray-200 pt-8 mt-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                style={{ background: "linear-gradient(135deg,#10b981 0%,#059669 100%)" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2"/>
+                </svg>
+              </div>
+              <span className="text-sm font-semibold text-gray-700">FC-Vmap</span>
+            </div>
+            <p className="text-sm text-gray-400">© {year} FC-Vmap – Nền tảng đặt sân bóng đá</p>
+            <div className="flex gap-4 text-sm text-gray-500">
+              <button type="button" onClick={() => navigate("/venues")} className="hover:text-gray-700">Sân bóng</button>
+              <button type="button" onClick={() => navigate("/teams")} className="hover:text-gray-700">Đội bóng</button>
+              <button type="button" onClick={() => navigate("/auth")} className="hover:text-gray-700">Tài khoản</button>
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
   );

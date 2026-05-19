@@ -44,7 +44,8 @@ public class TeamService {
     }
 
     /**
-     * Create new team
+     * Create new team — bất kỳ user đã đăng nhập đều có thể tạo đội.
+     * Captain được tự động thêm vào danh sách members với role CAPTAIN.
      */
     public Team createTeam(String email,
                            String name,
@@ -58,9 +59,26 @@ public class TeamService {
                            Integer fairPlayScore) {
         User captain = findUserByEmail(email);
 
+        // Kiểm tra tên đội đã tồn tại chưa
         if (teamRepository.existsByName(name)) {
             throw new ConflictException("Team name already exists");
         }
+
+        // Kiểm tra user đã là captain của đội khác chưa (mỗi user chỉ captain 1 đội)
+        boolean alreadyCaptain = teamRepository.findAll().stream()
+                .anyMatch(t -> t.getCaptain() != null && t.getCaptain().getId().equals(captain.getId()));
+        if (alreadyCaptain) {
+            throw new ConflictException("You are already a captain of another team. A user can only captain one team.");
+        }
+
+        // Tạo captain member entry — tự động thêm người tạo đội vào danh sách members
+        Team.TeamMember captainMember = Team.TeamMember.builder()
+                .userId(captain.getId())
+                .role(Team.MemberRole.CAPTAIN)
+                .build();
+
+        List<Team.TeamMember> initialMembers = new ArrayList<>();
+        initialMembers.add(captainMember);
 
         Team team = Team.builder()
                 .name(name)
@@ -68,12 +86,13 @@ public class TeamService {
                 .captain(captain)
                 .tier(Team.Tier.BRONZE)
                 .rankingPoints(0)
-            .teamDescription(teamDescription)
-            .activeRegion(new Team.ActiveRegion(activeRegionDistrict, activeRegionCity))
-            .preferredPlayTime(preferredPlayTime != null ? preferredPlayTime : new ArrayList<>())
-            .achievements(achievements)
-            .lookingForMatch(lookingForMatch != null && lookingForMatch)
-            .fairPlayScore(fairPlayScore != null ? fairPlayScore : 100)
+                .teamDescription(teamDescription)
+                .activeRegion(new Team.ActiveRegion(activeRegionDistrict, activeRegionCity))
+                .preferredPlayTime(preferredPlayTime != null ? preferredPlayTime : new ArrayList<>())
+                .achievements(achievements)
+                .lookingForMatch(lookingForMatch != null && lookingForMatch)
+                .fairPlayScore(fairPlayScore != null ? fairPlayScore : 100)
+                .members(initialMembers)
                 .build();
 
         return teamRepository.save(team);
